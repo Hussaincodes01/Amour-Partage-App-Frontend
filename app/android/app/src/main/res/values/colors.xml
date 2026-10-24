@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="amour_background">#100C18</color>
+    <!-- Daylight (light) window background; values-night holds Midnight. -->
+    <color name="amour_background">#FBF7F5</color>
     <color name="ic_launcher_background">#140C22</color>
+    <color name="amour_pink">#FF4799</color>
 </resources>

@@ -1,109 +1,86 @@
-# Amour Partagé — Android app (Flutter)
+# Amour Partagé: Android app (Flutter)
 
-The couples app frontend, built from the Figma theme. It is dark, glassy and pink/violet, set in Plus Jakarta Sans with Material Symbols icons.
+A calm, private space for two: four tabs, a few cards per screen, and a light and a dark theme (it follows your phone's setting by default).
 
-| Home | Lounge | Chat | Vault & Map | AI Shield |
+| | Home | Together | Chat | Memories | Map |
+|---|---|---|---|---|---|
+| **Dark** | ![](docs/screens/home-dark.jpg) | ![](docs/screens/together-dark.jpg) | ![](docs/screens/chat-dark.jpg) | ![](docs/screens/memories-dark.jpg) | ![](docs/screens/map-dark.jpg) |
+| **Light** | ![](docs/screens/home-light.jpg) | ![](docs/screens/together-light.jpg) | ![](docs/screens/chat-light.jpg) | ![](docs/screens/memories-light.jpg) | ![](docs/screens/map-light.jpg) |
+
+| Welcome | Pairing | Video call | Profile | Privacy |
 |---|---|---|---|---|
-| ![](docs/screens/home.jpg) | ![](docs/screens/lounge.jpg) | ![](docs/screens/chat.jpg) | ![](docs/screens/vault-map.jpg) | ![](docs/screens/ai-shield.jpg) |
+| ![](docs/screens/welcome-light.jpg) | ![](docs/screens/pairing-dark.jpg) | ![](docs/screens/call-dark.jpg) | ![](docs/screens/profile-light.jpg) | ![](docs/screens/privacy-dark.jpg) |
 
-| Onboarding · step 2 | Video call | Watch Together on a call | Welcome |
-|---|---|---|---|
-| ![](docs/screens/onboarding.jpg) | ![](docs/screens/call.jpg) | ![](docs/screens/call-watch.jpg) | ![](docs/screens/welcome.jpg) |
+## Screens
 
-## Run it
+| Where | What's on it |
+|---|---|
+| **Home** | Greeting, your partner (online / typing, distance, **Call · Video · Send love**), today's question, what's playing in Together |
+| **Together** | One synced YouTube player, the shared queue (drag to reorder, swipe to remove), Playlists, Movie night (3-2-1 countdown on both phones) |
+| **Chat** | End-to-end encrypted messages, photos, hold-to-record voice notes, hearts (double tap), read receipts, call buttons |
+| **Memories** | Photo grid with a "days together" milestone; private memories open with your fingerprint |
+| **Map** (from Home) | Both of you on a live map; share for 1 h / 8 h / until you stop, optionally approximate; one-tap stop |
+| **Calls** | Voice or video, draggable self view, mute / camera / flip, Watch together inside the call, incoming-call screen |
+| **Profile** | Theme (Auto / Light / Dark), Privacy, safety emojis, daily questions, sign out, unlink, delete account |
+| **Privacy** | App lock, screenshot blocking, discreet notifications, link guard, photo blur, safety emojis, check-up |
+| **Onboarding** | Welcome (Google or email) → your name → privacy promise → pair (QR or code) → compare safety emojis |
+
+Coming after the beta (they open a small **Coming soon** pop-up): Spotify listening together, locked moments, GIFs, couple filters and screen sharing in calls, stealth mode, data export. "How well do you know me?" uses sample questions in the demo and is marked *Soon* when connected to a server.
+
+## Demo or real backend
+
+The app talks to a `Backend` interface (`lib/backend/backend.dart`) with two implementations:
+
+- **Demo** (default): everything stays on the phone, with a simulated partner (Camille) who replies, joins your invite after a few seconds, and so on. The APKs in [`releases/`](../releases/) run in this mode unless they were built with Firebase settings.
+- **Firebase**: real accounts, pairing, encrypted chat and media, presence, synced playback, daily questions, location, memories, push notifications and LiveKit calls. Set it up with [`backend/README.md`](../backend/README.md), then build with your settings:
+
+  ```bash
+  cp config/firebase.example.json config/firebase.json   # fill it in
+  flutter run --dart-define-from-file=config/firebase.json
+  ```
+
+Private content is sealed on the phone before it's sent: X25519 key agreement, HKDF and XChaCha20-Poly1305 (`lib/core/crypto/`). The server only ever stores ciphertext. Profile → Safety emojis lets you check, in person, that nobody swapped a key.
+
+## Run and build
 
 ```bash
 cd app
 flutter pub get
-flutter run                                  # debug build on a connected phone or emulator
+flutter run                                  # debug build on a phone or emulator
 flutter build apk --release --split-per-abi  # release APKs in build/app/outputs/flutter-apk/
 ```
 
-Requirements: Flutter 3.47 (stable), JDK 17 and the Android SDK (API 36).
-CI (`.github/workflows/android.yml`) runs analyze and tests, then builds the APKs on every push that touches `app/`.
-A manual run (**Actions → Android app → Run workflow**) also commits the APKs to [`releases/`](../releases/).
+Requirements: Flutter 3.47 (stable), JDK 17 and the Android SDK (API 36). CI (`.github/workflows/android.yml`) runs analyze and tests, then builds the APKs. A manual run (**Actions → Android app → Run workflow**) also commits them to [`releases/`](../releases/).
 
-## Speed and smoothness (60 → 165 Hz)
+## Smooth on 60 to 165 Hz screens
 
-- **Full refresh rate.** `MainActivity` requests the display's fastest mode (90/120/144/165 Hz). Many phones otherwise hold apps at 60 Hz.
-- **Impeller renderer** is enabled explicitly (Vulkan, with GLES fallback).
-- **Every animation is time-based.** Fades, pops, springs and page transitions run on the vsync ticker, so they stay at the same speed and look smoother on faster panels.
-- **Cheap effects.**
-  - Card "glows" are radial gradients, not blur passes.
-  - Real backdrop blur is used only on the header and nav (grouped with `BackdropGroup`).
-  - Hidden tabs are offstage with their tickers paused.
-  - Images decode at display size.
-  - Live indicators ping and then rest, so idle screens stop redrawing.
-- **Respects "Remove animations"** in Android accessibility settings.
-
-## Screens
-
-| Area | Screens |
-|---|---|
-| Onboarding | Splash · Welcome (email magic link / Google) · Step 1 *About us* · Step 2 *AI Privacy Sanctuary* (Figma) · Step 3 *Pair phones* (QR + invite code) · Step 4 *Safety emoji check* |
-| Home (Figma) | Couple hub · partner presence · Send Spark / Warm Hug / Love Chime · daily Soul Spark with simultaneous reveal · Together Right Now · Vault highlights |
-| Lounge (Figma) | YouTube Party synced player · partner PiP · shared scrubber · Live Sparks · drag-to-reorder / swipe-to-remove queue · timestamp memory tag · full-screen player · Add media sheet · Playlists · Movie Night with synced 3-2-1 start |
-| Chat (Figma) | E2EE chat · typing indicator · locked moment with riddle unlock · voice notes (hold the mic) · photos (system photo picker) · emoji / attach / options sheets · Heartbeat |
-| Calls (Figma) | Outgoing ringing → connected video call · draggable self-view · touch pulse (double-tap) · love reactions · mute / camera · Watch Together drawer · voice-only mode · incoming call |
-| Vault & Map (Figma) | Live map with partner pins · Ghost Mode · time-boxed location sharing · 500-days milestone ring · AI recap · Memory Vault (biometric unlock) · New capsule · Timeline |
-| AI Shield | Guard toggles · paired keys + safety emojis · privacy check-up quiz · data / unlink |
-| More | Profile & settings · Soul Sparks archive · couple quiz · app lock |
-
-## Beta vs. coming soon
-
-Features scheduled after beta hardening open a **"Coming soon"** pop-up when tapped:
-
-- Spotify Dual sync
-- Cast to TV
-- Duo FX AR filters
-- Anti-Snoop Stealth Mode / Cloak
-- Live Touch drawing
-- Whisper mode
-- Self-destruct messages
-- Creating Locked Moments
-- GIFs
-- Message search
-- Chat themes
-- Binaural audio
-- AI recap reels
-- Time-locked capsules
-- Spotify import
-- Data export
-- QR scanner
-- Light theme
-
-### Real now (on-device)
-
-- **Screenshot Shield:** `FLAG_SECURE` through a platform channel, on by default.
-- **Biometric Couple Lock:** the app locks after 30 s in the background.
-- **Vault unlock:** uses the system biometric prompt (`local_auth`).
-- **Photo picking:** the system photo picker and camera (`image_picker`).
-- **Pairing QR code:** a real QR code (`qr_flutter`).
-
-### Demo data until the backend is connected
-
-- Messages, the queue, location and calls are local mock state (`lib/data/`).
-- Demo photos live in `assets/demo/` and are swapped for the couple's own encrypted media later.
+- `MainActivity` asks for the display's fastest refresh rate; Impeller renders.
+- Every animation is time-based (fades, pops, theme changes), so it's equally fast and only smoother on faster panels.
+- Glows are radial gradients, not blur passes; real blur is only on the bars.
+- Hidden tabs stop their animations; the YouTube player pauses locally when you leave Together (your partner keeps watching).
+- "Remove animations" in Android's accessibility settings is respected.
 
 ## Structure
 
 ```
 lib/
-  app/            app root, shell (header, nav, tab fade-through)
+  app/            app root, 4-tab shell, build-time config
+  backend/        Backend interface, demo/ and firebase/ implementations, LiveKit calls
   core/
-    motion/       FadePop, Pressable, PingDot/Breathing, routes
-    theme/        colour + type tokens from Figma
-    widgets/      cards, pills, buttons, avatar, switch, sheets, coming-soon, logo
-    security/     biometric + privacy channel
-  data/           models, mock data, CoupleState (AppScope)
-  features/       onboarding · home · lounge · chat · call · vault · shield · questions · profile
-android/          MainActivity (high refresh, FLAG_SECURE), themes, adaptive icon, splash
-tool/brand/       launcher icon / splash generators
+    crypto/       couple key, sealing, media encryption, safety emojis, key storage
+    sync/         watch-together sync engine (drift, last-writer-wins)
+    theme/        light + dark colour tokens, type scale, theme controller
+    motion/       FadePop, Pressable, routes, pulses
+    widgets/      cards, buttons, tiles, segmented control, sheets, dialogs
+  data/           models and CoupleState (UI state over the backend)
+  features/       home · together · chat · memories · map · call · profile · privacy · questions · onboarding
 ```
 
 ## Tests
 
 ```bash
-flutter test                                                            # smoke tests (tabs, chat, Soul Spark, coming-soon, onboarding, call)
-flutter test --run-skipped --tags screenshots --update-goldens          # renders every screen to test/goldens/
+flutter test                                                     # widget flows + crypto, sync and link unit tests
+flutter test --run-skipped --tags screenshots --update-goldens   # renders every screen, both themes, to test/goldens/
 ```
+
+The crypto tests include the RFC 7748 X25519 vectors and tamper checks.

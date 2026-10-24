@@ -7,47 +7,40 @@ import '../theme/app_text.dart';
 import 'buttons.dart';
 import 'surfaces.dart';
 
-/// Scaffold for pushed screens: frosted back bar + staggered content.
+/// Scaffold for pushed screens: back button + title bar, staggered content.
 class SubPage extends StatelessWidget {
   const SubPage({
     super.key,
     required this.title,
     required this.children,
-    this.subtitle,
     this.actions = const [],
     this.bottom,
-    this.blooms = true,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16),
+    this.padding = const EdgeInsets.symmetric(horizontal: 20),
     this.gap = 16,
   });
 
   final String title;
-  final String? subtitle;
   final List<Widget> children;
   final List<Widget> actions;
 
-  /// Optional pinned footer (e.g. a primary CTA).
+  /// Optional pinned footer (e.g. a primary button).
   final Widget? bottom;
-  final bool blooms;
   final EdgeInsets padding;
   final double gap;
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final pad = MediaQuery.paddingOf(context);
-    const barHeight = 60.0;
+    const bar = 56.0;
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: c.bg,
       body: BackdropGroup(
         child: Stack(
           children: [
-            if (blooms) ...[
-              Positioned(left: -80, top: -60, child: GlowBlob(color: AppColors.hotPink.withValues(alpha: 0.14), size: 300)),
-              Positioned(right: -110, top: 320, child: GlowBlob(color: AppColors.violet.withValues(alpha: 0.22), size: 320)),
-            ],
+            const Positioned.fill(child: AmbientGlow()),
             ListView.builder(
-              padding: padding.copyWith(top: pad.top + barHeight + 12, bottom: pad.bottom + (bottom != null ? 104 : 32)),
-              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              padding: padding.copyWith(top: pad.top + bar + 8, bottom: pad.bottom + (bottom != null ? 100 : 32)),
               itemCount: children.length,
               itemBuilder: (context, i) => Padding(
                 padding: EdgeInsets.only(top: i == 0 ? 0 : gap),
@@ -59,33 +52,22 @@ class SubPage extends StatelessWidget {
               left: 0,
               right: 0,
               child: FrostedBox(
-                sigma: 14,
-                color: AppColors.ink(0.82),
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(12, pad.top + 10, 12, 10),
+                  padding: EdgeInsets.fromLTRB(12, pad.top + 6, 12, 6),
                   child: SizedBox(
-                    height: barHeight - 20,
+                    height: bar - 12,
                     child: Row(
                       children: [
                         RoundIconButton(
                           icon: Symbols.arrow_back,
                           size: 40,
-                          iconSize: 20,
-                          color: AppColors.surfaceHigh,
+                          iconSize: 22,
+                          color: Colors.transparent,
                           semanticLabel: 'Back',
                           onTap: () => Navigator.of(context).maybePop(),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(title, style: AppText.subhead, maxLines: 1, overflow: TextOverflow.ellipsis),
-                              if (subtitle != null) Text(subtitle!, style: AppText.label.copyWith(color: AppColors.primary), maxLines: 1),
-                            ],
-                          ),
-                        ),
+                        const SizedBox(width: 4),
+                        Expanded(child: Text(title, style: AppText.headline, maxLines: 1, overflow: TextOverflow.ellipsis)),
                         ...actions,
                       ],
                     ),
@@ -94,12 +76,7 @@ class SubPage extends StatelessWidget {
               ),
             ),
             if (bottom != null)
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: pad.bottom + 16,
-                child: FadePop(delay: const Duration(milliseconds: 200), child: bottom!),
-              ),
+              Positioned(left: 20, right: 20, bottom: pad.bottom + 16, child: FadePop(delay: const Duration(milliseconds: 150), child: bottom!)),
           ],
         ),
       ),

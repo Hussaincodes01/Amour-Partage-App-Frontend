@@ -50,3 +50,6 @@ app.*.map.json
 # Visual reference renders (regenerate with: flutter test --run-skipped --tags screenshots --update-goldens)
 test/goldens/
 test/failures/
+
+# Real Firebase settings (copy config/firebase.example.json)
+/config/firebase.json

@@ -3,74 +3,72 @@ import 'package:flutter/widgets.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text.dart';
 
-/// Circular photo avatar with optional gradient ring and status dot.
+/// Circular avatar: a photo when there is one, otherwise the initial.
 class Avatar extends StatelessWidget {
-  const Avatar({
-    super.key,
-    required this.image,
-    this.size = 32,
-    this.ring,
-    this.ringWidth = 2,
-    this.status,
-    this.statusSize = 10,
-    this.statusBorder,
-    this.glow,
-  });
+  const Avatar({super.key, this.image, this.name = '', this.size = 40, this.ring = false, this.online});
 
-  final ImageProvider image;
+  final ImageProvider? image;
+  final String name;
   final double size;
-  final Gradient? ring;
-  final double ringWidth;
-  final Color? status;
-  final double statusSize;
-  final Color? statusBorder;
-  final Color? glow;
+
+  /// Brand gradient ring around the photo.
+  final bool ring;
+
+  /// Shows a presence dot (green when true, grey when false).
+  final bool? online;
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    final inner = size - (ring != null ? ringWidth * 2 : 0);
-    Widget photo = ClipOval(
-      child: Image(
-        image: ResizeImage.resizeIfNeeded((inner * dpr).round(), null, image),
-        width: inner,
-        height: inner,
-        fit: BoxFit.cover,
-        filterQuality: FilterQuality.medium,
-        gaplessPlayback: true,
-      ),
-    );
-    if (ring != null) {
-      photo = Container(
+    final ringWidth = ring ? (size / 20).clamp(1.5, 3.0) : 0.0;
+    final inner = size - ringWidth * 2;
+    Widget face = image != null
+        ? Image(
+            image: ResizeImage.resizeIfNeeded((inner * dpr).round(), null, image!),
+            width: inner,
+            height: inner,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+          )
+        : Container(
+            width: inner,
+            height: inner,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(gradient: AppGradients.avatarRing),
+            child: Text(
+              name.isEmpty ? '♥' : name.characters.first.toUpperCase(),
+              style: AppText.subhead.copyWith(color: const Color(0xFFFFFFFF), fontSize: inner * 0.4, height: 1),
+            ),
+          );
+    face = ClipOval(child: face);
+    if (ring) {
+      face = Container(
         width: size,
         height: size,
         padding: EdgeInsets.all(ringWidth),
-        decoration: BoxDecoration(
-          gradient: ring,
-          shape: BoxShape.circle,
-          boxShadow: glow != null ? [BoxShadow(color: glow!, blurRadius: 10)] : null,
-        ),
-        child: photo,
+        decoration: const BoxDecoration(gradient: AppGradients.avatarRing, shape: BoxShape.circle),
+        child: face,
       );
     }
-    if (status == null) return SizedBox.square(dimension: size, child: photo);
+    if (online == null) return SizedBox.square(dimension: size, child: face);
+    final dot = (size * 0.28).clamp(8.0, 14.0);
     return SizedBox.square(
       dimension: size,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          photo,
+          face,
           Positioned(
-            right: -1,
-            bottom: -1,
+            right: 0,
+            bottom: 0,
             child: Container(
-              width: statusSize,
-              height: statusSize,
+              width: dot,
+              height: dot,
               decoration: BoxDecoration(
-                color: status,
+                color: online! ? c.success : c.textFaint,
                 shape: BoxShape.circle,
-                border: statusBorder != null ? Border.all(color: statusBorder!, width: 2) : null,
-                boxShadow: [BoxShadow(color: status!.withValues(alpha: 0.8), blurRadius: 6)],
+                border: Border.all(color: c.surface, width: 2),
               ),
             ),
           ),
@@ -80,36 +78,33 @@ class Avatar extends StatelessWidget {
   }
 }
 
-/// Initial-letter avatar ("J", "C", "YOU", "CA").
-class InitialAvatar extends StatelessWidget {
-  const InitialAvatar({super.key, required this.text, required this.color, this.size = 14, this.textColor = const Color(0xFFFFFFFF), this.fontSize = 8, this.borderColor});
+/// Two overlapping avatars ("Julian & Camille").
+class CoupleAvatars extends StatelessWidget {
+  const CoupleAvatars({super.key, required this.me, required this.partner, this.size = 44, this.meName = '', this.partnerName = ''});
 
-  final String text;
-  final Color color;
+  final ImageProvider? me;
+  final ImageProvider? partner;
+  final String meName;
+  final String partnerName;
   final double size;
-  final Color textColor;
-  final double fontSize;
-  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: borderColor != null ? Border.all(color: borderColor!, width: 2) : null,
+    final bg = context.colors.surface;
+    Widget ringed(ImageProvider? img, String name) => Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+          child: Avatar(image: img, name: name, size: size),
+        );
+    return SizedBox(
+      width: size * 1.7 + 4,
+      height: size + 4,
+      child: Stack(
+        children: [
+          ringed(me, meName),
+          Positioned(left: size * 0.7, child: ringed(partner, partnerName)),
+        ],
       ),
-      child: Text(text, style: AppText.label.copyWith(fontSize: fontSize, height: 1, letterSpacing: 0, color: textColor)),
     );
   }
 }
-
-/// Default ring for partner avatars.
-const partnerRing = LinearGradient(
-  begin: Alignment.bottomLeft,
-  end: Alignment.topRight,
-  colors: [AppColors.lavender, AppColors.hotPink],
-);

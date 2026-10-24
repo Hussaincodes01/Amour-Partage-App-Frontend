@@ -1,127 +1,143 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/motion/pressable.dart';
-import '../../core/motion/routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text.dart';
-import '../../core/widgets/avatar.dart';
-import '../../core/widgets/pills.dart';
+import '../../core/widgets/feedback.dart';
 import '../../core/widgets/sub_page.dart';
 import '../../core/widgets/surfaces.dart';
 import '../../core/widgets/symbol.dart';
 import '../../data/couple_state.dart';
-import '../../data/demo_images.dart';
-import '../../data/mock.dart';
 import '../../data/models.dart';
-import '../home/soul_spark_card.dart';
-import 'quiz_screen.dart';
+import '../home/spark_card.dart';
 
-/// Soul Sparks archive + entry to the "How well do you know me?" quiz.
-class QuestionsScreen extends StatelessWidget {
+/// Today's question and the answers you've both revealed before.
+class QuestionsScreen extends StatefulWidget {
   const QuestionsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final today = AppScope.of(context).spark;
-    return SubPage(
-      title: 'Soul Sparks',
-      subtitle: '182 questions answered together',
-      children: [
-        Pressable(
-          pressedScale: 0.98,
-          onTap: () => context.pushPop(const QuizScreen()),
-          child: AmourCard(
-            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF3A1550), AppColors.surfaceLow]),
-            blooms: [Bloom(color: AppColors.hotPink.withValues(alpha: 0.25), size: 200, right: -60, top: -70)],
-            child: Row(
-              children: [
-                const Text('🎯', style: TextStyle(fontSize: 40)),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('COUPLE QUIZ', style: AppText.label.copyWith(color: AppColors.lavender)),
-                      Text('How well do you know ${Mock.partner}?', style: AppText.headline),
-                      Text('4 questions • beat your last score of 3/4', style: AppText.small),
-                    ],
-                  ),
-                ),
-                const Sym(Symbols.play_circle, size: 32, color: AppColors.primary, fill: true),
-              ],
-            ),
-          ),
-        ),
-        if (today.myAnswer == null) const SoulSparkCard() else _PastSpark(spark: today, isToday: true),
-        Text('Earlier sparks', style: AppText.title),
-        for (final s in Mock.pastSparks) _PastSpark(spark: s),
-      ],
-    );
-  }
+  State<QuestionsScreen> createState() => _QuestionsScreenState();
 }
 
-class _PastSpark extends StatelessWidget {
-  const _PastSpark({required this.spark, this.isToday = false});
-
-  final SoulSpark spark;
-  final bool isToday;
+class _QuestionsScreenState extends State<QuestionsScreen> {
+  late final Future<List<DailySpark>> _past = AppScope.read(context).backend.pastSparks();
 
   @override
   Widget build(BuildContext context) {
-    return AmourCard(
-      color: AppColors.surfaceLow,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text('SOUL SPARK #${spark.number}', style: AppText.label.copyWith(color: AppColors.primary)),
-              const Spacer(),
-              if (isToday) const Tag(label: 'TODAY', color: AppColors.mint) else const Tag(label: 'Unlocked', icon: Symbols.lock_open, color: AppColors.lavender),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(spark.question, style: AppText.headline),
-          const SizedBox(height: 12),
-          _Answer(image: DemoImages.camille, name: Mock.partner, text: spark.partnerAnswer ?? '', color: AppColors.lavender),
-          const SizedBox(height: 8),
-          _Answer(image: DemoImages.julian, name: 'You', text: spark.myAnswer ?? '', color: AppColors.primary),
-        ],
-      ),
+    final c = context.colors;
+    final partner = AppScope.of(context).partnerName;
+    return FutureBuilder<List<DailySpark>>(
+      future: _past,
+      builder: (context, snap) {
+        final past = snap.data ?? const <DailySpark>[];
+        return SubPage(
+          title: 'Daily questions',
+          children: [
+            const SparkCard(),
+            const _FreshQuestions(),
+            if (past.isNotEmpty) Padding(padding: const EdgeInsets.only(left: 4, top: 8), child: Text('Earlier', style: AppText.headline)),
+            for (final s in past)
+              AmourCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(s.prompt, style: AppText.subhead),
+                    const SizedBox(height: 10),
+                    if (s.myAnswer != null) _Line(who: 'You', text: s.myAnswer!, color: c.textMuted),
+                    if (s.partnerAnswer != null) ...[const SizedBox(height: 6), _Line(who: partner, text: s.partnerAnswer!, color: c.accent)],
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
 
-class _Answer extends StatelessWidget {
-  const _Answer({required this.image, required this.name, required this.text, required this.color});
+class _Line extends StatelessWidget {
+  const _Line({required this.who, required this.text, required this.color});
 
-  final ImageProvider image;
-  final String name;
+  final String who;
   final String text;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Avatar(image: image, size: 28),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(color: AppColors.ink(0.55), borderRadius: BorderRadius.circular(16)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: AppText.label.copyWith(color: color)),
-                Text(text, style: AppText.body.copyWith(fontSize: 13, height: 1.4)),
-              ],
-            ),
+    return Text.rich(
+      TextSpan(children: [
+        TextSpan(text: '$who  ', style: AppText.caption.copyWith(color: color, fontWeight: FontWeight.w700)),
+        TextSpan(text: text, style: AppText.small),
+      ]),
+    );
+  }
+}
+
+/// Ask for new AI-written questions on a theme (used on the next days).
+class _FreshQuestions extends StatefulWidget {
+  const _FreshQuestions();
+
+  @override
+  State<_FreshQuestions> createState() => _FreshQuestionsState();
+}
+
+class _FreshQuestionsState extends State<_FreshQuestions> {
+  static const _themes = [('fun', 'Fun', Symbols.mood), ('deep', 'Deep', Symbols.favorite), ('future', 'Future', Symbols.rocket_launch), ('memories', 'Memories', Symbols.photo_library)];
+  String? _busy;
+
+  Future<void> _generate(String theme, String label) async {
+    if (_busy != null) return;
+    setState(() => _busy = theme);
+    try {
+      final questions = await AppScope.read(context).backend.generateQuestions(theme);
+      if (mounted) showToast(context, '${questions.length} new $label questions are on the way', icon: Symbols.auto_awesome);
+    } on Exception catch (e) {
+      if (mounted) showToast(context, '$e', icon: Symbols.error, color: context.colors.danger);
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AmourCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Fresh questions', style: AppText.subhead),
+          const SizedBox(height: 2),
+          Text('Pick a mood. New questions show up on the next days.', style: AppText.small.copyWith(color: c.textMuted)),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (id, label, icon) in _themes)
+                Pressable(
+                  onTap: () => _generate(id, label.toLowerCase()),
+                  haptic: PressFeedback.selection,
+                  semanticLabel: '$label questions',
+                  child: AnimatedContainer(
+                    duration: Motion.medium,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    decoration: BoxDecoration(color: _busy == id ? c.pink : c.surfaceHigh, borderRadius: BorderRadius.circular(999)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Sym(icon, size: 16, color: _busy == id ? Colors.white : c.accent, fill: true),
+                        const SizedBox(width: 6),
+                        Text(_busy == id ? 'Writing…' : label, style: AppText.smallStrong.copyWith(color: _busy == id ? Colors.white : c.text)),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -1,120 +1,109 @@
-import 'dart:io';
-import 'dart:math' as math;
+import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../core/motion/motion.dart';
 import '../../core/motion/pressable.dart';
+import '../../core/motion/routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text.dart';
-import '../../core/widgets/avatar.dart';
+import '../../core/widgets/buttons.dart';
 import '../../core/widgets/feedback.dart';
-import '../../core/widgets/surfaces.dart';
+import '../../core/widgets/sheet.dart';
 import '../../core/widgets/symbol.dart';
 import '../../core/widgets/waveform.dart';
 import '../../data/couple_state.dart';
-import '../../data/demo_images.dart';
 import '../../data/models.dart';
 
-const _partnerRadius = BorderRadius.only(
-  topLeft: Radius.circular(32),
-  topRight: Radius.circular(32),
-  bottomRight: Radius.circular(32),
-  bottomLeft: Radius.circular(2),
-);
-const _myRadius = BorderRadius.only(
-  topLeft: Radius.circular(32),
-  topRight: Radius.circular(32),
-  bottomLeft: Radius.circular(32),
-  bottomRight: Radius.circular(2),
-);
+String formatTime(DateTime t) {
+  final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
+  return '$h:${t.minute.toString().padLeft(2, '0')} ${t.hour < 12 ? 'AM' : 'PM'}';
+}
 
-/// Builds the right bubble for a message, aligned to its sender.
+/// One message, aligned left (partner) or right (me), with time + status.
 class MessageRow extends StatelessWidget {
-  const MessageRow({super.key, required this.message});
+  const MessageRow({super.key, required this.message, this.showMeta = true});
 
   final ChatMessage message;
+  final bool showMeta;
 
   @override
   Widget build(BuildContext context) {
-    final mine = message.sender == Sender.me;
-    final maxW = MediaQuery.sizeOf(context).width * (message.kind == MessageKind.text ? 0.78 : 0.84);
-    final bubble = switch (message.kind) {
-      MessageKind.text => _TextBubble(message: message),
-      MessageKind.lockedMoment => LockedMomentCard(message: message),
-      MessageKind.voiceNote => VoiceNoteBubble(message: message),
-      MessageKind.photo => _PhotoBubble(message: message),
+    final c = context.colors;
+    final m = message;
+    final bubble = switch (m.kind) {
+      MessageKind.text => _TextBubble(message: m),
+      MessageKind.photo => _PhotoBubble(message: m),
+      MessageKind.voice => _VoiceBubble(message: m),
+      MessageKind.lockedMoment => _LockedBubble(message: m),
     };
-    final content = Column(
-      crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: m.mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
-        bubble,
-        const SizedBox(height: 4),
-        _Meta(message: message),
+        GestureDetector(
+          onDoubleTap: () {
+            HapticFeedback.lightImpact();
+            AppScope.read(context).backend.heartMessage(m.id);
+          },
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.76),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                bubble,
+                if (m.hearts > 0)
+                  Positioned(
+                    bottom: -10,
+                    left: m.mine ? -6 : null,
+                    right: m.mine ? null : -6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(999), border: Border.all(color: c.border)),
+                      child: const Text('❤️', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (showMeta)
+          Padding(
+            padding: EdgeInsets.only(top: m.hearts > 0 ? 14 : 4, left: 6, right: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(formatTime(m.sentAt), style: AppText.caption.copyWith(color: c.textFaint, fontSize: 11)),
+                if (m.mine) ...[
+                  const SizedBox(width: 4),
+                  Sym(
+                    switch (m.status) {
+                      MessageStatus.sending => Symbols.schedule,
+                      MessageStatus.sent => Symbols.check,
+                      MessageStatus.read => Symbols.done_all,
+                      MessageStatus.failed => Symbols.error,
+                    },
+                    size: 14,
+                    color: m.status == MessageStatus.read ? c.accent : (m.status == MessageStatus.failed ? c.danger : c.textFaint),
+                  ),
+                ],
+              ],
+            ),
+          ),
       ],
     );
-    return Align(
-      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxW),
-        child: mine
-            ? content
-            : Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Padding(padding: EdgeInsets.only(bottom: 22), child: Avatar(image: DemoImages.camille, size: 24)),
-                  const SizedBox(width: 4),
-                  Flexible(child: content),
-                ],
-              ),
-      ),
-    );
   }
 }
 
-class _Meta extends StatelessWidget {
-  const _Meta({required this.message});
-
-  final ChatMessage message;
-
-  @override
-  Widget build(BuildContext context) {
-    final mine = message.sender == Sender.me;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(message.time, style: AppText.label.copyWith(color: AppColors.outline)),
-          if (message.footnote != null) ...[
-            const SizedBox(width: 4),
-            Flexible(child: Text('• ${message.footnote}', style: AppText.label.copyWith(color: AppColors.lavender), overflow: TextOverflow.ellipsis)),
-          ],
-          if (!mine && message.reactions > 0) ...[
-            const SizedBox(width: 4),
-            for (var i = 0; i < message.reactions; i++) const Sym(Symbols.favorite, size: 11, color: AppColors.primary, fill: true),
-          ],
-          if (mine) ...[
-            const SizedBox(width: 4),
-            AnimatedSwitcher(
-              duration: Motion.medium,
-              transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
-              child: Sym(
-                message.seen ? Symbols.done_all : Symbols.done,
-                key: ValueKey(message.seen),
-                size: 14,
-                color: message.seen ? AppColors.lavender : AppColors.outline,
-              ),
-            ),
-          ],
-        ],
-      ),
+BorderRadius _radius(bool mine) => BorderRadius.only(
+      topLeft: const Radius.circular(20),
+      topRight: const Radius.circular(20),
+      bottomLeft: Radius.circular(mine ? 20 : 6),
+      bottomRight: Radius.circular(mine ? 6 : 20),
     );
-  }
-}
 
 class _TextBubble extends StatelessWidget {
   const _TextBubble({required this.message});
@@ -123,24 +112,12 @@ class _TextBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mine = message.sender == Sender.me;
-    return GestureDetector(
-      onDoubleTap: () {
-        HapticFeedback.lightImpact();
-        showEmojiBurst(context, '💗', count: 5);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: mine ? null : AppColors.muted(0.85),
-          gradient: mine ? AppGradients.pinkDeep : null,
-          borderRadius: mine ? _myRadius : _partnerRadius,
-          boxShadow: mine
-              ? [BoxShadow(color: AppColors.hotPink.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 4))]
-              : const [BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 4))],
-        ),
-        child: Text(message.text ?? '', style: AppText.body.copyWith(color: mine ? Colors.white : AppColors.onSurface)),
-      ),
+    final c = context.colors;
+    final mine = message.mine;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(color: mine ? c.bubbleMine : c.bubblePartner, borderRadius: _radius(mine)),
+      child: Text(message.text ?? '', style: AppText.body.copyWith(color: mine ? Colors.white : c.text)),
     );
   }
 }
@@ -152,358 +129,282 @@ class _PhotoBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final path = message.photoPath;
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    return ClipRRect(
-      borderRadius: _myRadius,
-      child: SizedBox(
-        width: 220,
-        height: 260,
-        child: path == null
-            ? const CoverImage(DemoImages.kyoto)
-            : Image.file(File(path), fit: BoxFit.cover, cacheWidth: (220 * dpr).round(), filterQuality: FilterQuality.medium),
-      ),
-    );
-  }
-}
-
-/// Encrypted surprise that only unlocks with the couple's riddle answer.
-class LockedMomentCard extends StatefulWidget {
-  const LockedMomentCard({super.key, required this.message});
-
-  final ChatMessage message;
-
-  @override
-  State<LockedMomentCard> createState() => _LockedMomentCardState();
-}
-
-class _LockedMomentCardState extends State<LockedMomentCard> with SingleTickerProviderStateMixin {
-  final _answer = TextEditingController();
-  late final AnimationController _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
-
-  @override
-  void dispose() {
-    _answer.dispose();
-    _shake.dispose();
-    super.dispose();
-  }
-
-  void _tryUnlock() {
-    final guess = _answer.text.trim().toLowerCase();
-    if (guess.isEmpty) return;
-    if (guess.contains(widget.message.answer ?? '')) {
-      HapticFeedback.heavyImpact();
-      FocusScope.of(context).unfocus();
-      AppScope.read(context).unlockMoment(widget.message.id);
-      showEmojiBurst(context, '🍨', count: 8);
-    } else {
-      HapticFeedback.vibrate();
-      _shake.forward(from: 0);
-      showLoveToast(context, 'Not quite… think sunshine & Vespas', icon: Symbols.lock, color: AppColors.lavender);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final unlocked = AppScope.of(context).unlockedMoments.contains(widget.message.id);
-    return AnimatedBuilder(
-      animation: _shake,
-      builder: (context, child) => Transform.translate(offset: Offset(math.sin(_shake.value * math.pi * 6) * 8 * (1 - _shake.value), 0), child: child),
-      child: AmourCard(
-        color: AppColors.raised(0.9),
-        blooms: [
-          Bloom(color: AppColors.primary.withValues(alpha: 0.2), size: 150, right: -40, top: -40),
-          Bloom(color: AppColors.lavender.withValues(alpha: 0.15), size: 150, left: -40, bottom: -40),
-        ],
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: AppColors.hotPink.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(999)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Sym(unlocked ? Symbols.lock_open : Symbols.lock, size: 13, color: AppColors.primary, fill: true),
-                      const SizedBox(width: 6),
-                      Text(unlocked ? 'UNLOCKED MOMENT' : 'LOCKED MOMENT', style: AppText.label.copyWith(color: AppColors.primary)),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                Text('Self-destructs in 24h', style: AppText.label.copyWith(color: AppColors.lavenderFixed)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 176,
-              child: ColoredBox(
-                color: AppColors.bg,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 600),
-                  switchInCurve: Motion.emphasized,
-                  transitionBuilder: (c, a) => FadeTransition(opacity: a, child: ScaleTransition(scale: Tween(begin: 1.08, end: 1.0).animate(a), child: c)),
-                  child: unlocked
-                      ? const CoverImage(DemoImages.kyoto, key: ValueKey('open'))
-                      : Stack(
-                          key: const ValueKey('locked'),
-                          fit: StackFit.expand,
-                          children: [
-                            // The teaser asset is pre-blurred, so no live blur pass is needed.
-                            const Opacity(opacity: 0.7, child: CoverImage(DemoImages.lockedTeaser)),
-                            ColoredBox(color: AppColors.ink(0.4)),
-                            Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: const LinearGradient(begin: Alignment.bottomLeft, end: Alignment.topRight, colors: [AppColors.hotPink, AppColors.lavender]),
-                                      boxShadow: [BoxShadow(color: AppColors.hotPink.withValues(alpha: 0.5), blurRadius: 12)],
-                                    ),
-                                    child: const Sym(Symbols.encrypted, size: 24, color: Colors.white, fill: true),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text('ZERO-KNOWLEDGE VAULT', style: AppText.labelSemi.copyWith(color: AppColors.primaryFixed, letterSpacing: 1)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(12),
-              color: AppColors.ink(0.7),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('COUPLE RIDDLE CHALLENGE', style: AppText.label.copyWith(color: AppColors.primary, letterSpacing: 0.25)),
-                  const SizedBox(height: 2),
-                  Text(
-                    unlocked ? '“Rome, by the Trevi fountain. You dropped your pistachio cone 🍦”' : '“${widget.message.riddle}”',
-                    style: AppText.body.copyWith(height: 1.375),
-                  ),
-                ],
-              ),
-            ),
-            AnimatedSize(
-              duration: Motion.medium,
-              curve: Motion.emphasized,
-              child: unlocked
-                  ? const SizedBox(width: double.infinity)
-                  : Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              height: 44,
-                              padding: const EdgeInsets.symmetric(horizontal: 14),
-                              alignment: Alignment.centerLeft,
-                              decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(999)),
-                              child: TextField(
-                                controller: _answer,
-                                style: AppText.small.copyWith(color: AppColors.onSurface),
-                                textInputAction: TextInputAction.done,
-                                onSubmitted: (_) => _tryUnlock(),
-                                decoration: InputDecoration(
-                                  isCollapsed: true,
-                                  border: InputBorder.none,
-                                  hintText: 'Type location (e.g. Rome)...',
-                                  hintStyle: AppText.small.copyWith(color: AppColors.outline),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Pressable(
-                            onTap: _tryUnlock,
-                            haptic: PressFeedback.medium,
-                            child: Container(
-                              height: 44,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              decoration: BoxDecoration(
-                                gradient: AppGradients.pinkBlush,
-                                borderRadius: BorderRadius.circular(999),
-                                boxShadow: [BoxShadow(color: AppColors.hotPink.withValues(alpha: 0.35), blurRadius: 8)],
-                              ),
-                              child: Row(
-                                children: [
-                                  const Sym(Symbols.lock_open, size: 16, color: Colors.white, fill: true),
-                                  const SizedBox(width: 4),
-                                  Text('Unlock', style: AppText.smallBold.copyWith(color: Colors.white)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-            ),
-          ],
+    final image = message.image;
+    return Pressable(
+      pressedScale: 0.98,
+      onTap: image == null ? null : () => context.pushPop(_PhotoViewer(image: image)),
+      child: ClipRRect(
+        borderRadius: _radius(message.mine),
+        child: SizedBox(
+          width: 220,
+          height: 260,
+          child: image == null
+              ? ColoredBox(color: context.colors.surfaceHigh)
+              : Image(image: image, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, _, _) => ColoredBox(color: context.colors.surfaceHigh)),
         ),
       ),
     );
   }
 }
 
-/// Voice note with a playable waveform and on-device transcription.
-class VoiceNoteBubble extends StatefulWidget {
-  const VoiceNoteBubble({super.key, required this.message});
+class _PhotoViewer extends StatelessWidget {
+  const _PhotoViewer({required this.image});
+
+  final ImageProvider image;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Positioned.fill(child: InteractiveViewer(child: Center(child: Image(image: image, fit: BoxFit.contain)))),
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + 8,
+            left: 8,
+            child: RoundIconButton(icon: Symbols.close, color: const Color(0x66000000), iconColor: Colors.white, semanticLabel: 'Close', onTap: () => Navigator.of(context).pop()),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VoiceBubble extends StatefulWidget {
+  const _VoiceBubble({required this.message});
 
   final ChatMessage message;
 
   @override
-  State<VoiceNoteBubble> createState() => _VoiceNoteBubbleState();
+  State<_VoiceBubble> createState() => _VoiceBubbleState();
 }
 
-class _VoiceNoteBubbleState extends State<VoiceNoteBubble> with SingleTickerProviderStateMixin {
-  late final AnimationController _play = AnimationController(vsync: this, duration: widget.message.duration ?? const Duration(seconds: 12), value: 0.33);
-  bool _expanded = true;
-
-  static const _heights = <double>[12, 20, 28, 16, 32, 24, 12, 28, 20, 16, 28, 24, 12, 20, 16, 8];
-  static const _colors = [
-    AppColors.primary, AppColors.primary, AppColors.primary, AppColors.hotPink, AppColors.primary, AppColors.primary, AppColors.lavender, AppColors.lavender,
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.message.transcript == null) _play.value = 0;
-    _play.addStatusListener((s) {
-      if (s == AnimationStatus.completed) setState(() => _play.value = 0);
-    });
-  }
+class _VoiceBubbleState extends State<_VoiceBubble> with SingleTickerProviderStateMixin {
+  static const _bars = <double>[8, 14, 20, 12, 24, 16, 10, 22, 18, 12, 26, 14, 8, 18, 22, 12, 16, 10, 20, 14, 8, 12];
+  late final AnimationController _progress = AnimationController(vsync: this, duration: widget.message.duration ?? const Duration(seconds: 10));
+  AudioPlayer? _player;
+  StreamSubscription<Duration>? _posSub;
+  bool _loading = false;
 
   @override
   void dispose() {
-    _play.dispose();
+    _posSub?.cancel();
+    _player?.dispose();
+    _progress.dispose();
     super.dispose();
   }
 
-  String _fmt(double seconds) => '0:${seconds.floor().toString().padLeft(2, '0')}';
+  Future<void> _toggle() async {
+    final load = widget.message.audio;
+    if (load == null) {
+      // Demo: simulate playback.
+      _progress.isAnimating ? _progress.stop() : _progress.forward(from: _progress.value >= 1 ? 0 : _progress.value);
+      setState(() {});
+      return;
+    }
+    final player = _player;
+    if (player != null) {
+      player.playing ? await player.pause() : await player.play();
+      if (mounted) setState(() {});
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final path = await load();
+      if (path == null || !mounted) return;
+      final p = AudioPlayer();
+      await p.setFilePath(path);
+      final total = p.duration ?? widget.message.duration ?? const Duration(seconds: 1);
+      _posSub = p.positionStream.listen((pos) => _progress.value = (pos.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0));
+      p.playerStateStream.listen((s) {
+        if (s.processingState == ProcessingState.completed) {
+          p.pause();
+          p.seek(Duration.zero);
+        }
+        if (mounted) setState(() {});
+      });
+      _player = p;
+      await p.play();
+    } on Exception {
+      if (mounted) showToast(context, 'Couldn’t play this voice note', icon: Symbols.error, color: context.colors.danger);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final total = (widget.message.duration ?? const Duration(seconds: 12)).inMilliseconds / 1000;
+    final c = context.colors;
+    final mine = widget.message.mine;
+    final playing = _player?.playing ?? _progress.isAnimating;
+    final fg = mine ? Colors.white : c.text;
+    final length = widget.message.duration ?? Duration.zero;
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.raised(0.9),
-        borderRadius: _myRadius,
-        boxShadow: const [BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 4))],
+      padding: const EdgeInsets.fromLTRB(8, 8, 14, 8),
+      decoration: BoxDecoration(color: mine ? c.bubbleMine : c.bubblePartner, borderRadius: _radius(mine)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          RoundIconButton(
+            icon: _loading ? Symbols.hourglass_empty : (playing ? Symbols.pause : Symbols.play_arrow),
+            onTap: _toggle,
+            size: 38,
+            iconSize: 22,
+            fill: true,
+            color: mine ? Colors.white.withValues(alpha: 0.22) : c.pink,
+            iconColor: Colors.white,
+            semanticLabel: playing ? 'Pause voice note' : 'Play voice note',
+          ),
+          const SizedBox(width: 10),
+          AnimatedBuilder(
+            animation: _progress,
+            builder: (context, _) => Waveform(
+              heights: _bars,
+              colors: [fg],
+              barWidth: 3,
+              gap: 2.5,
+              maxHeight: 26,
+              progress: _progress.value == 0 && !playing ? null : _progress.value,
+              inactiveColor: fg.withValues(alpha: 0.35),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text('${length.inMinutes}:${(length.inSeconds % 60).toString().padLeft(2, '0')}', style: AppText.caption.copyWith(color: fg.withValues(alpha: 0.85))),
+        ],
       ),
+    );
+  }
+}
+
+/// A photo sealed behind a question only the partner can answer.
+class _LockedBubble extends StatelessWidget {
+  const _LockedBubble({required this.message});
+
+  final ChatMessage message;
+
+  Future<void> _unlock(BuildContext context) async {
+    final ok = await showAmourSheet<bool>(context, builder: (_) => _UnlockSheet(message: message));
+    if (ok == true && context.mounted) {
+      AppScope.read(context).unlockMoment(message.id);
+      HapticFeedback.mediumImpact();
+      showEmojiBurst(context, '🔓', count: 6);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final unlocked = AppScope.of(context).unlockedMoments.contains(message.id);
+    return Container(
+      width: 240,
+      decoration: BoxDecoration(color: c.bubblePartner, borderRadius: _radius(message.mine)),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Pressable(
-                pressedScale: 0.88,
-                onTap: () => setState(() => _play.isAnimating ? _play.stop() : _play.forward()),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppColors.hotPink,
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: AppColors.hotPink.withValues(alpha: 0.4), blurRadius: 8)],
-                  ),
-                  child: Sym(_play.isAnimating ? Symbols.pause : Symbols.play_arrow, size: 26, color: Colors.white, fill: true),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: AnimatedBuilder(
-                  animation: _play,
-                  builder: (context, _) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        height: 32,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Waveform(
-                              heights: _heights,
-                              colors: _colors,
-                              progress: _play.value,
-                              inactiveColor: AppColors.surfaceHighest,
-                              live: _play.isAnimating,
-                              maxHeight: 32,
-                            ),
+          SizedBox(
+            height: 150,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (message.image != null)
+                  AnimatedSwitcher(
+                    duration: Motion.slow,
+                    child: unlocked
+                        ? Image(key: const ValueKey('open'), image: message.image!, fit: BoxFit.cover)
+                        : ImageFiltered(
+                            key: const ValueKey('locked'),
+                            imageFilter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                            child: Image(image: message.image!, fit: BoxFit.cover),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Row(
-                          children: [
-                            Text(_fmt(_play.value * total), style: AppText.label.copyWith(color: AppColors.outline)),
-                            const Spacer(),
-                            Text(_fmt(total), style: AppText.label.copyWith(color: AppColors.outline)),
-                          ],
-                        ),
-                      ),
-                    ],
                   ),
-                ),
-              ),
-            ],
-          ),
-          if (widget.message.transcript != null) ...[
-            const SizedBox(height: 8),
-            Pressable(
-              pressedScale: 0.99,
-              haptic: PressFeedback.selection,
-              onTap: () => setState(() => _expanded = !_expanded),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                color: AppColors.ink(0.6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Sym(Symbols.auto_awesome, size: 14, color: AppColors.lavender),
-                        const SizedBox(width: 4),
-                        Text('Encrypted Transcription', style: AppText.label.copyWith(color: AppColors.lavender)),
-                        const Spacer(),
-                        AnimatedRotation(
-                          turns: _expanded ? 0.5 : 0,
-                          duration: Motion.medium,
-                          child: const Sym(Symbols.expand_more, size: 16, color: AppColors.lavender),
-                        ),
-                      ],
+                if (!unlocked)
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(shape: BoxShape.circle, gradient: AppGradients.pinkViolet),
+                      child: const Sym(Symbols.lock, color: Colors.white, fill: true),
                     ),
-                    AnimatedSize(
-                      duration: Motion.medium,
-                      curve: Motion.emphasized,
-                      alignment: Alignment.topCenter,
-                      child: _expanded
-                          ? Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(widget.message.transcript!, style: AppText.small.copyWith(fontStyle: FontStyle.italic)),
-                            )
-                          : const SizedBox(width: double.infinity),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+              ],
             ),
-          ],
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(unlocked ? 'Unlocked 💞' : 'Locked moment', style: AppText.caption.copyWith(color: c.accent, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(message.riddle ?? '', style: AppText.smallStrong),
+                if (!unlocked) ...[
+                  const SizedBox(height: 10),
+                  TonalButton(label: 'Answer to unlock', icon: Symbols.key, height: 40, onTap: () => _unlock(context)),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UnlockSheet extends StatefulWidget {
+  const _UnlockSheet({required this.message});
+
+  final ChatMessage message;
+
+  @override
+  State<_UnlockSheet> createState() => _UnlockSheetState();
+}
+
+class _UnlockSheetState extends State<_UnlockSheet> {
+  final _text = TextEditingController();
+  bool _wrong = false;
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  void _check() {
+    final answer = _text.text.trim().toLowerCase();
+    if (answer.isNotEmpty && answer.contains(widget.message.answer ?? '\u0000')) {
+      Navigator.of(context).pop(true);
+    } else {
+      HapticFeedback.heavyImpact();
+      setState(() => _wrong = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AmourSheet(
+      title: 'Locked moment',
+      subtitle: widget.message.riddle,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(color: c.surfaceHigh, borderRadius: BorderRadius.circular(18), border: Border.all(color: _wrong ? c.danger : Colors.transparent)),
+            child: TextField(
+              controller: _text,
+              autofocus: true,
+              onChanged: (_) => setState(() => _wrong = false),
+              onSubmitted: (_) => _check(),
+              style: AppText.body.copyWith(color: c.text),
+              decoration: InputDecoration(border: InputBorder.none, hintText: 'Your answer', hintStyle: AppText.body.copyWith(color: c.textFaint)),
+            ),
+          ),
+          if (_wrong) ...[const SizedBox(height: 8), Text('Not quite. Try again 💭', style: AppText.small.copyWith(color: c.danger))],
+          const SizedBox(height: 16),
+          GradientButton(label: 'Unlock', icon: Symbols.lock_open, onTap: _check),
         ],
       ),
     );

@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// Encrypted photos and voice notes. Files are ciphertext (sealed on the phone
+// with a per-file key that only travels inside an encrypted message), so the
+// server never sees them. Only the couple's two members can read or add files.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /couples/{cid}/media/{file} {
+      function isMember() {
+        let couple = firestore.get(/databases/(default)/documents/couples/$(cid)).data;
+        return request.auth != null && request.auth.uid in couple.members && couple.status == 'active';
+      }
+
+      allow read: if isMember();
+      allow create: if isMember()
+          && request.resource.size < 25 * 1024 * 1024
+          && request.resource.contentType == 'application/octet-stream';
+      allow update, delete: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

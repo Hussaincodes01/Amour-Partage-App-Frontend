@@ -1,0 +1,48 @@
+name: Backend
+
+on:
+  push:
+    paths: ['backend/**', '.github/workflows/backend.yml']
+  pull_request:
+    paths: ['backend/**', '.github/workflows/backend.yml']
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            backend/functions/package-lock.json
+
+      # The Firestore and Database emulators run on Java.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install
+        run: |
+          npm ci
+          npm --prefix functions ci
+
+      - name: Type-check and build functions
+        run: npm --prefix functions run build
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Security rules tests (emulators)
+        run: npm run test:rules
+
+      - name: Cloud Functions tests (emulators)
+        run: npm run test:functions

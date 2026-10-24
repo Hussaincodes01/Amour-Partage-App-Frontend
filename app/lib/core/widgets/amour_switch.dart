@@ -4,7 +4,7 @@ import 'package:flutter/widgets.dart';
 import '../motion/motion.dart';
 import '../theme/app_colors.dart';
 
-/// 48×28 pill switch from the Figma theme, with a springy knob.
+/// Pill switch with a springy knob.
 class AmourSwitch extends StatelessWidget {
   const AmourSwitch({super.key, required this.value, required this.onChanged, this.semanticLabel});
 
@@ -14,6 +14,7 @@ class AmourSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Semantics(
       toggled: value,
       label: semanticLabel,
@@ -32,22 +33,20 @@ class AmourSwitch extends StatelessWidget {
           height: 28,
           padding: const EdgeInsets.symmetric(horizontal: 3),
           decoration: BoxDecoration(
-            color: value ? AppColors.hotPink : AppColors.surfaceHighest,
+            color: value ? c.pink : c.surfaceHighest,
             borderRadius: BorderRadius.circular(999),
-            boxShadow: value ? [BoxShadow(color: AppColors.hotPink.withValues(alpha: 0.35), blurRadius: 10)] : null,
           ),
           child: AnimatedAlign(
             duration: Motion.medium,
             curve: Motion.pop,
             alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            child: AnimatedContainer(
-              duration: Motion.medium,
-              curve: Motion.pop,
-              width: value ? 20 : 24,
-              height: value ? 20 : 24,
+            child: Container(
+              width: 22,
+              height: 22,
               decoration: BoxDecoration(
-                color: value ? const Color(0xFFFFFFFF) : AppColors.onSurface,
+                color: const Color(0xFFFFFFFF),
                 shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: c.shadow.withValues(alpha: 0.18), blurRadius: 4, offset: const Offset(0, 1))],
               ),
             ),
           ),

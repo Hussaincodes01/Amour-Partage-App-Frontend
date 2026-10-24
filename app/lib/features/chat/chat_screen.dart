@@ -1,31 +1,25 @@
-import 'dart:async';
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../app/shell.dart';
 import '../../core/motion/fade_pop.dart';
 import '../../core/motion/motion.dart';
-import '../../core/motion/pressable.dart';
 import '../../core/motion/pulse.dart';
 import '../../core/motion/routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text.dart';
 import '../../core/widgets/avatar.dart';
 import '../../core/widgets/buttons.dart';
-import '../../core/widgets/feedback.dart';
-import '../../core/widgets/pills.dart';
+import '../../core/widgets/surfaces.dart';
 import '../../core/widgets/symbol.dart';
 import '../../data/couple_state.dart';
-import '../../data/demo_images.dart';
-import '../../data/mock.dart';
+import '../../data/models.dart';
 import '../call/call_screen.dart';
+import '../privacy/privacy_screen.dart';
 import 'composer.dart';
 import 'message_bubbles.dart';
 
-/// AI-guarded, end-to-end encrypted chat with Camille.
+/// End-to-end encrypted chat with your partner.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -35,235 +29,203 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final _scroll = ScrollController();
-  int _lastCount = 0;
-  Timer? _typingStop;
-  Timer? _reply;
-
-  static const _replies = ['Aww 🥹 you’re the best', 'Can’t wait!! 💞', 'Popcorn’s on me 🍿', 'Haha stop it 😂❤️', 'Counting the minutes ✨'];
-
-  @override
-  void initState() {
-    super.initState();
-    // Demo: Camille finishes "typing" a few seconds after you open the chat.
-    _typingStop = Timer(const Duration(seconds: 6), () {
-      if (mounted) AppScope.read(context).setPartnerTyping(false);
-    });
-  }
+  int _lastCount = -1;
 
   @override
   void dispose() {
-    _typingStop?.cancel();
-    _reply?.cancel();
     _scroll.dispose();
     super.dispose();
   }
 
+  /// The list is reversed, so offset 0 is the newest message.
   void _scrollToEnd() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scroll.hasClients) return;
-      _scroll.animateTo(_scroll.position.maxScrollExtent, duration: Motion.slow, curve: Motion.emphasized);
-    });
-  }
-
-  void _simulateReply() {
-    final state = AppScope.read(context);
-    _reply?.cancel();
-    _reply = Timer(const Duration(milliseconds: 900), () {
-      if (!mounted) return;
-      state.setPartnerTyping(true);
-      _reply = Timer(const Duration(milliseconds: 1800), () {
-        if (!mounted) return;
-        state.receivePartnerMessage(_replies[math.Random().nextInt(_replies.length)]);
-        HapticFeedback.lightImpact();
-      });
-    });
+    if (!_scroll.hasClients) return;
+    _scroll.animateTo(0, duration: Motion.slow, curve: Motion.emphasized);
   }
 
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final insets = ShellInsets.of(context);
-    final composerBottom = insets.bottom + 8;
-    if (state.messages.length != _lastCount) {
-      final first = _lastCount == 0;
-      _lastCount = state.messages.length;
-      if (first) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
-        });
-      } else {
-        _scrollToEnd();
-      }
+    final messages = state.messages;
+    if (messages.length != _lastCount) {
+      if (_lastCount >= 0) WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToEnd());
+      _lastCount = messages.length;
     }
-
+    const barHeight = 64.0;
     return Stack(
       children: [
         Positioned.fill(
           child: ListView.builder(
             controller: _scroll,
+            reverse: true,
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-            padding: EdgeInsets.fromLTRB(16, insets.top + 116, 16, composerBottom + 148),
-            itemCount: state.messages.length + 1,
+            padding: EdgeInsets.fromLTRB(14, 12, 14, insets.top + barHeight + 12),
+            itemCount: messages.length + 1,
             itemBuilder: (context, i) {
-              if (i == 0) return const _DateChip();
-              final m = state.messages[i - 1];
-              return Padding(
+              if (i == messages.length) return const _EncryptionNote();
+              final m = messages[messages.length - 1 - i];
+              final older = messages.length - 2 - i >= 0 ? messages[messages.length - 2 - i] : null;
+              final newer = i > 0 ? messages[messages.length - i] : null;
+              final showDay = older == null || !_sameDay(older.sentAt, m.sentAt);
+              final lastInGroup = newer == null || newer.mine != m.mine || newer.sentAt.difference(m.sentAt).inMinutes > 5;
+              return Column(
                 key: ValueKey(m.id),
-                padding: const EdgeInsets.only(top: 16),
-                child: FadePop(delay: Motion.stagger * math.min(i, 6), child: MessageRow(message: m)),
+                children: [
+                  if (showDay) _DayChip(date: m.sentAt),
+                  Padding(
+                    padding: EdgeInsets.only(top: older != null && older.mine == m.mine && !showDay ? 3 : 12),
+                    child: FadePop(offsetY: 8, child: MessageRow(message: m, showMeta: lastInGroup)),
+                  ),
+                ],
               );
             },
           ),
         ),
+        Positioned(top: 0, left: 0, right: 0, child: _ChatBar(height: barHeight, presence: state.presence)),
         Positioned(
-          top: insets.top + 4,
-          left: 16,
-          right: 16,
-          child: Column(
-            children: [
-              const _SecurityPill(),
-              const SizedBox(height: 8),
-              _PartnerStrip(typing: state.partnerTyping),
-            ],
-          ),
-        ),
-        Positioned(
-          left: 16,
-          right: 16,
-          bottom: composerBottom,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const QuickTouchStrip(),
-              const SizedBox(height: 8),
-              Composer(
-                onSent: () {
-                  _scrollToEnd();
-                  _simulateReply();
-                },
-              ),
-            ],
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(12, 0, 12, insets.bottom + 10),
+            child: Composer(onSent: _scrollToEnd),
           ),
         ),
       ],
     );
   }
+
+  static bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
-class _DateChip extends StatelessWidget {
-  const _DateChip();
+class _ChatBar extends StatelessWidget {
+  const _ChatBar({required this.height, required this.presence});
+
+  final double height;
+  final Presence presence;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        decoration: BoxDecoration(color: AppColors.muted(0.7), borderRadius: BorderRadius.circular(999)),
-        child: Text('Today, October 24', style: AppText.label.copyWith(color: AppColors.outline)),
-      ),
-    );
-  }
-}
-
-class _SecurityPill extends StatelessWidget {
-  const _SecurityPill();
-
-  @override
-  Widget build(BuildContext context) {
-    return Pressable(
-      pressedScale: 0.98,
-      onTap: () => AppScope.read(context).selectTab(4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(color: AppColors.raised(0.9), borderRadius: BorderRadius.circular(999)),
-        child: Row(
-          children: [
-            const Sym(Symbols.lock, size: 14, color: AppColors.mint, fill: true),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                'AI-Guarded Channel • Zero-Knowledge E2EE • Screenshots Blocked',
-                maxLines: 2,
-                style: AppText.label.copyWith(letterSpacing: 0.25),
-              ),
+    final c = context.colors;
+    final state = AppScope.of(context);
+    final partner = state.couple?.partner;
+    final top = MediaQuery.paddingOf(context).top;
+    return DecoratedBox(
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.border))),
+      child: FrostedBox(
+        opacity: 0.9,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, top + 8, 8, 8),
+          child: SizedBox(
+            height: height - 16,
+            child: Row(
+              children: [
+                Avatar(image: partner?.photo, name: partner?.name ?? '', size: 40, online: presence.online),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(partner?.name ?? 'Partner', style: AppText.headline, maxLines: 1),
+                      AnimatedSwitcher(
+                        duration: Motion.medium,
+                        layoutBuilder: (current, previous) => Stack(alignment: Alignment.centerLeft, children: [...previous, ?current]),
+                        child: presence.typing
+                            ? Row(
+                                key: const ValueKey('typing'),
+                                children: [
+                                  Text('typing', style: AppText.caption.copyWith(color: c.accent)),
+                                  const SizedBox(width: 6),
+                                  TypingDots(color: c.accent),
+                                ],
+                              )
+                            : _Tap(
+                                key: const ValueKey('secure'),
+                                onTap: () => context.pushPop(const PrivacyScreen()),
+                                child: Row(
+                                  children: [
+                                    Sym(Symbols.lock, size: 12, color: c.success, fill: true),
+                                    const SizedBox(width: 4),
+                                    Text(presence.online ? 'Online · end-to-end encrypted' : 'End-to-end encrypted', style: AppText.caption.copyWith(color: c.textMuted)),
+                                  ],
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+                RoundIconButton(icon: Symbols.call, color: Colors.transparent, iconColor: c.text, semanticLabel: 'Voice call', onTap: () => context.pushPop(const CallScreen(video: false), slideUp: true)),
+                RoundIconButton(icon: Symbols.videocam, color: Colors.transparent, iconColor: c.text, semanticLabel: 'Video call', onTap: () => context.pushPop(const CallScreen(), slideUp: true)),
+              ],
             ),
-            const SizedBox(width: 6),
-            const Dot(color: AppColors.mint, size: 6, glow: true),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _PartnerStrip extends StatelessWidget {
-  const _PartnerStrip({required this.typing});
+/// Minimal tap wrapper without the press scale (keeps the bar text steady).
+class _Tap extends StatelessWidget {
+  const _Tap({super.key, required this.child, required this.onTap});
 
-  final bool typing;
+  final Widget child;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap, child: child);
+}
+
+class _DayChip extends StatelessWidget {
+  const _DayChip({required this.date});
+
+  final DateTime date;
+
+  static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  String _label() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(date.year, date.month, date.day);
+    final diff = today.difference(day).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    return '${_months[date.month - 1]} ${date.day}${date.year != now.year ? ', ${date.year}' : ''}';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(color: AppColors.ink(0.75), borderRadius: BorderRadius.circular(32)),
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 4),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(color: c.surfaceHigh, borderRadius: BorderRadius.circular(999)),
+          child: Text(_label(), style: AppText.caption.copyWith(color: c.textMuted)),
+        ),
+      ),
+    );
+  }
+}
+
+class _EncryptionNote extends StatelessWidget {
+  const _EncryptionNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Avatar(image: DemoImages.camille, size: 28, ring: partnerRing, status: AppColors.mint, statusSize: 8),
-          const SizedBox(width: 8),
-          Text(Mock.partner, style: AppText.smallStrong.copyWith(color: AppColors.lavender)),
+          Sym(Symbols.lock, size: 14, color: c.textFaint),
           const SizedBox(width: 6),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: Motion.medium,
-              layoutBuilder: (current, previous) => Stack(alignment: Alignment.centerLeft, children: [...previous, ?current]),
-              child: typing
-                  ? Row(
-                      key: const ValueKey('typing'),
-                      children: [
-                        Text('is typing', style: AppText.small),
-                        const SizedBox(width: 6),
-                        const TypingDots(color: AppColors.primary),
-                      ],
-                    )
-                  : Text('online • E2EE', key: const ValueKey('online'), style: AppText.small.copyWith(color: AppColors.mint)),
-            ),
-          ),
-          Pressable(
-            onTap: () {
-              HapticFeedback.heavyImpact();
-              showLoveToast(context, 'Your hearts are in sync • 62 BPM', icon: Symbols.ecg_heart, color: AppColors.lavender);
-            },
-            child: Tag(
-              label: '62 BPM',
-              icon: Symbols.ecg_heart,
-              iconSize: 13,
-              color: AppColors.lavender,
-              background: AppColors.violet.withValues(alpha: 0.3),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            ),
-          ),
-          const SizedBox(width: 6),
-          RoundIconButton(
-            icon: Symbols.call,
-            size: 32,
-            iconSize: 16,
-            color: AppColors.surfaceHigh,
-            iconColor: AppColors.mint,
-            fill: true,
-            semanticLabel: 'Voice call',
-            onTap: () => context.pushPop(const CallScreen(videoOn: false), slideUp: true),
-          ),
-          const SizedBox(width: 6),
-          RoundIconButton(
-            icon: Symbols.videocam,
-            size: 32,
-            iconSize: 16,
-            gradient: AppGradients.pinkViolet,
-            iconColor: Colors.white,
-            fill: true,
-            semanticLabel: 'Video call',
-            onTap: () => context.pushPop(const CallScreen(), slideUp: true),
+          Flexible(
+            child: Text('Only the two of you can read these messages.', textAlign: TextAlign.center, style: AppText.caption.copyWith(color: c.textFaint)),
           ),
         ],
       ),

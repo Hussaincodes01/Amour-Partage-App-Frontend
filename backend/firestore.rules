@@ -1,0 +1,174 @@
+rules_version = '2';
+
+// Amour Partagé: only the two members of an active couple can read or write
+// its data, private fields are end-to-end encrypted on the phones (`ct` + `n`),
+// and anything that needs trust (pairing, calls, daily questions) is written
+// by Cloud Functions only.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function coupleDoc(cid) {
+      return get(/databases/$(database)/documents/couples/$(cid)).data;
+    }
+
+    function isMember(cid) {
+      return signedIn() && request.auth.uid in coupleDoc(cid).members && coupleDoc(cid).status == 'active';
+    }
+
+    // A sealed value: base64 ciphertext and a 24-byte nonce.
+    function sealed(d) {
+      return d.ct is string && d.ct.size() > 0 && d.ct.size() <= 100000
+          && d.n is string && d.n.size() == 32;
+    }
+
+    function onlyKeys(d, keys) {
+      return d.keys().hasOnly(keys);
+    }
+
+    function changes(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    // Updating one entry of a map field: only the caller's own key may change.
+    function ownEntry(field) {
+      return request.resource.data[field].diff(resource.data[field]).affectedKeys().hasOnly([request.auth.uid]);
+    }
+
+    function isPublicKey(k) {
+      return k is string && k.matches('^[A-Za-z0-9+/]{43}=$');
+    }
+
+    match /users/{uid} {
+      function profileOk(d) {
+        return onlyKeys(d, ['name', 'email', 'photoUrl', 'publicKey', 'updatedAt', 'coupleId', 'limits'])
+            && (!('name' in d) || (d.name is string && d.name.size() > 0 && d.name.size() <= 40))
+            && (!('publicKey' in d) || isPublicKey(d.publicKey));
+      }
+      // Partners can see each other's profile.
+      allow read: if signedIn() && (request.auth.uid == uid
+          || (resource.data.get('coupleId', null) != null
+              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('coupleId', '') == resource.data.coupleId));
+      allow create: if request.auth.uid == uid && profileOk(request.resource.data)
+          && !('coupleId' in request.resource.data) && !('limits' in request.resource.data);
+      allow update: if request.auth.uid == uid && profileOk(request.resource.data)
+          && changes(['name', 'email', 'photoUrl', 'publicKey', 'updatedAt']);
+      allow delete: if false;
+
+      match /devices/{deviceId} {
+        allow read, delete: if request.auth.uid == uid;
+        allow create, update: if request.auth.uid == uid
+            && onlyKeys(request.resource.data, ['fcmToken', 'platform', 'updatedAt'])
+            && request.resource.data.fcmToken is string && request.resource.data.fcmToken.size() <= 4096;
+      }
+    }
+
+    // Pairing invites are only touched by Cloud Functions.
+    match /invites/{code} {
+      allow read, write: if false;
+    }
+
+    match /couples/{cid} {
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+      allow create, delete: if false;
+      allow update: if signedIn() && request.auth.uid in resource.data.members && resource.data.status == 'active' && (
+          // A new phone publishes its public key.
+          (changes(['keys']) && ownEntry('keys') && isPublicKey(request.resource.data.keys[request.auth.uid]))
+          // Your own display name.
+          || (changes(['names']) && ownEntry('names') && request.resource.data.names[request.auth.uid] is string
+              && request.resource.data.names[request.auth.uid].size() > 0 && request.resource.data.names[request.auth.uid].size() <= 40)
+          // Read receipts.
+          || (changes(['lastRead']) && ownEntry('lastRead') && request.resource.data.lastRead[request.auth.uid] == request.time)
+          // "The safety emojis match": records which partner key you checked.
+          || (changes(['verifiedKeys']) && ownEntry('verifiedKeys') && isPublicKey(request.resource.data.verifiedKeys[request.auth.uid]))
+      );
+
+      match /messages/{mid} {
+        allow read: if isMember(cid);
+        allow create: if isMember(cid)
+            && onlyKeys(request.resource.data, ['ct', 'n', 'sender', 'kind', 'createdAt'])
+            && sealed(request.resource.data)
+            && request.resource.data.sender == request.auth.uid
+            && request.resource.data.kind in ['text', 'photo', 'voice', 'lockedMoment']
+            && request.resource.data.createdAt == request.time;
+        // Hearts: toggle only your own.
+        allow update: if isMember(cid) && changes(['hearts'])
+            && request.resource.data.get('hearts', {}).diff(resource.data.get('hearts', {})).affectedKeys().hasOnly([request.auth.uid]);
+        // Unsend your own message.
+        allow delete: if isMember(cid) && resource.data.sender == request.auth.uid;
+      }
+
+      match /queue/{itemId} {
+        allow read, delete: if isMember(cid);
+        allow create: if isMember(cid)
+            && onlyKeys(request.resource.data, ['ct', 'n', 'mediaId', 'provider', 'addedBy', 'order', 'createdAt'])
+            && sealed(request.resource.data)
+            && request.resource.data.mediaId is string && request.resource.data.mediaId.size() <= 64
+            && request.resource.data.provider in ['youtube', 'spotify', 'link']
+            && request.resource.data.addedBy == request.auth.uid
+            && request.resource.data.order is number;
+        allow update: if isMember(cid) && changes(['order']) && request.resource.data.order is number;
+      }
+
+      match /playlists/{playlistId} {
+        allow read, delete: if isMember(cid);
+        allow create: if isMember(cid)
+            && onlyKeys(request.resource.data, ['ct', 'n', 'items', 'createdBy', 'createdAt'])
+            && sealed(request.resource.data)
+            && request.resource.data.items == []
+            && request.resource.data.createdBy == request.auth.uid;
+        allow update: if isMember(cid) && changes(['items'])
+            && request.resource.data.items is list && request.resource.data.items.size() <= 500;
+      }
+
+      // Daily questions are created by Cloud Functions.
+      match /sparks/{day} {
+        allow read: if isMember(cid);
+        allow write: if false;
+
+        match /answers/{uid} {
+          // You can read your partner's answer only after you've answered.
+          allow read: if isMember(cid) && (uid == request.auth.uid
+              || exists(/databases/$(database)/documents/couples/$(cid)/sparks/$(day)/answers/$(request.auth.uid)));
+          allow create: if isMember(cid) && uid == request.auth.uid
+              && exists(/databases/$(database)/documents/couples/$(cid)/sparks/$(day))
+              && onlyKeys(request.resource.data, ['ct', 'n', 'createdAt'])
+              && sealed(request.resource.data);
+          allow update, delete: if false;
+        }
+      }
+
+      match /locations/{uid} {
+        allow read: if isMember(cid);
+        // Sharing is time-boxed: at most 8 hours ahead (renewed while active).
+        allow create, update: if isMember(cid) && uid == request.auth.uid
+            && onlyKeys(request.resource.data, ['ct', 'n', 'updatedAt', 'expiresAt'])
+            && sealed(request.resource.data)
+            && request.resource.data.expiresAt is timestamp
+            && request.resource.data.expiresAt > request.time
+            && request.resource.data.expiresAt <= request.time + duration.value(8, 'h') + duration.value(5, 'm');
+        allow delete: if signedIn() && uid == request.auth.uid;
+      }
+
+      match /memories/{memoryId} {
+        allow read: if isMember(cid);
+        allow create: if isMember(cid)
+            && onlyKeys(request.resource.data, ['ct', 'n', 'by', 'date', 'createdAt'])
+            && sealed(request.resource.data)
+            && request.resource.data.by == request.auth.uid
+            && request.resource.data.date is timestamp;
+        allow update: if false;
+        allow delete: if isMember(cid) && resource.data.by == request.auth.uid;
+      }
+
+      // Calls are created and updated by Cloud Functions.
+      match /calls/{callId} {
+        allow read: if isMember(cid);
+        allow write: if false;
+      }
+    }
+  }
+}

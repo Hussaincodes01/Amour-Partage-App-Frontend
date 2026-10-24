@@ -7,7 +7,7 @@
 | **Platform** | Android first (iOS later from the same codebase) |
 | **Release target** | Closed beta on Google Play |
 | **Design reference** | The project's Figma theme (dark plum, pink/violet glow, Plus Jakarta Sans, Material Symbols). It is implemented in [`app/`](app/). Section 3 below records the earlier Dribbble-based exploration |
-| **Status** | Plan, ready for review. Decisions needed are listed in [§13](#13-open-decisions) |
+| **Status** | App (`app/`) and backend (`backend/`) built for the beta: decluttered 4-tab UI, light and dark themes, Firebase + LiveKit backend with end-to-end encryption. Open decisions in [§13](#13-open-decisions) |
 
 ---
 
@@ -108,7 +108,7 @@ The reference shows two moods of the same onboarding screen. We turn them into o
 11. **Privacy Center:** app lock, sessions and devices, AI Guard settings, data export/delete, unlink.
 12. Settings / profile.
 
-**Bottom navigation:** Home · Chat · Together · Map · Privacy.
+**Bottom navigation (as built):** Home · Together · Chat · Memories. The map opens from Home; Privacy lives in Profile. This keeps each screen to a few cards.
 
 ---
 
@@ -152,12 +152,12 @@ The logo follows the Figma theme: a neon double heart (magenta → violet) on a 
 | YouTube | `youtube_player_iframe` | Official IFrame API, so it complies with YouTube's player rules |
 | Crypto | `cryptography` + `cryptography_flutter`, `flutter_secure_storage` (Android Keystore) | Audited primitives, hardware-backed key storage |
 | On-device AI | TFLite (`tflite_flutter`) and ML Kit | Runs privately on the phone |
-| Server AI | Cloud Function calling the Claude API (`claude-haiku-5-5`) | The API key never ships in the app. Only non-sensitive prompts are sent |
+| Server AI | Cloud Function calling the Claude API (`claude-opus-5-5` by default, configurable with `AI_MODEL`) | The API key never ships in the app. Only the theme and earlier prompts are sent |
 | Location / maps | `geolocator` with a location foreground service, `google_maps_flutter` (dark style) | No background-location permission needed for time-boxed sharing |
 | Push / calls | FCM high-priority data messages, then a full-screen incoming-call notification | Reliable call ringing |
 | Quality | Crashlytics, Firebase App Distribution, GitHub Actions | Fast beta loop |
 
-**Repositories:** this repo is the **Flutter app**. A companion `amour-partage-app-backend` repo holds the Cloud Functions (TypeScript), security rules, Firestore indexes and the LiveKit token service.
+**Repository layout:** `app/` is the Flutter app and `backend/` the Firebase project (Cloud Functions in TypeScript, security rules, indexes, LiveKit token service). See `backend/README.md` for setup, data layout and the encryption design. They can move to separate repositories later.
 
 ### 5.2 App structure (this repo)
 
@@ -236,7 +236,7 @@ The principle: **message content never leaves the couple's phones unencrypted, s
 - **Daily question:** both partners answer privately. Answers stay **locked until both have answered**, then reveal with a card flip and confetti when they match.
 - **"How well do you know me?"** Each partner answers about themselves and guesses the other's answer. The score is animated.
 - **Decks:** a curated library (about 300 questions in fun / deep / future / memories) ships in the app for beta.
-- **AI decks:** the Cloud Function asks Claude (`claude-haiku-5-5`) for fresh questions based **only** on the chosen deck, relationship stage, language and opt-in interest tags. **No chat content and no answers are ever sent.** Output is checked against a JSON schema and moderated. Each couple has a daily cap and results are cached to control cost.
+- **AI decks:** the Cloud Function asks Claude (`claude-opus-5-5` by default) for fresh questions based **only** on the chosen deck, relationship stage, language and opt-in interest tags. **No chat content and no answers are ever sent.** Output is checked against a JSON schema and moderated. Each couple has a daily cap and results are cached to control cost.
 
 ---
 

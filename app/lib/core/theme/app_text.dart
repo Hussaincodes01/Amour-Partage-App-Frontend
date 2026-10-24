@@ -1,128 +1,35 @@
 import 'package:flutter/painting.dart';
 
-import 'app_colors.dart';
-
-/// Type scale from the Figma theme (Plus Jakarta Sans; Cousine for timecodes).
+/// Type scale (Plus Jakarta Sans; Cousine for timecodes).
+///
+/// Styles carry no colour: text inherits the theme's text colour, and
+/// secondary text sets `color: context.colors.textMuted`.
 abstract final class AppText {
   static const _family = 'PlusJakartaSans';
 
-  static const display = TextStyle(
-    fontFamily: _family,
-    fontSize: 24,
-    height: 32 / 24,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -0.6,
-    color: AppColors.onSurface,
-  );
+  /// Screen titles ("Together", "Memories").
+  static const largeTitle = TextStyle(fontFamily: _family, fontSize: 28, height: 34 / 28, fontWeight: FontWeight.w700, letterSpacing: -0.6);
 
-  static const title = TextStyle(
-    fontFamily: _family,
-    fontSize: 20,
-    height: 28 / 20,
-    fontWeight: FontWeight.w600,
-    color: AppColors.onSurface,
-  );
+  static const display = TextStyle(fontFamily: _family, fontSize: 24, height: 30 / 24, fontWeight: FontWeight.w700, letterSpacing: -0.5);
 
-  static const titleBold = TextStyle(
-    fontFamily: _family,
-    fontSize: 20,
-    height: 28 / 20,
-    fontWeight: FontWeight.w700,
-    color: AppColors.onSurface,
-  );
+  static const title = TextStyle(fontFamily: _family, fontSize: 20, height: 26 / 20, fontWeight: FontWeight.w700, letterSpacing: -0.3);
 
-  static const headline = TextStyle(
-    fontFamily: _family,
-    fontSize: 18,
-    height: 24 / 18,
-    fontWeight: FontWeight.w600,
-    color: AppColors.onSurface,
-  );
+  static const headline = TextStyle(fontFamily: _family, fontSize: 17, height: 22 / 17, fontWeight: FontWeight.w600, letterSpacing: -0.1);
 
-  static const subhead = TextStyle(
-    fontFamily: _family,
-    fontSize: 16,
-    height: 20 / 16,
-    fontWeight: FontWeight.w700,
-    color: AppColors.onSurface,
-  );
+  static const subhead = TextStyle(fontFamily: _family, fontSize: 15, height: 20 / 15, fontWeight: FontWeight.w600);
 
-  static const body = TextStyle(
-    fontFamily: _family,
-    fontSize: 14,
-    height: 20 / 14,
-    fontWeight: FontWeight.w400,
-    color: AppColors.onSurface,
-  );
+  static const body = TextStyle(fontFamily: _family, fontSize: 15, height: 22 / 15, fontWeight: FontWeight.w400);
 
-  static const bodyStrong = TextStyle(
-    fontFamily: _family,
-    fontSize: 14,
-    height: 20 / 14,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.14,
-    color: AppColors.onSurface,
-  );
+  static const bodyStrong = TextStyle(fontFamily: _family, fontSize: 15, height: 22 / 15, fontWeight: FontWeight.w600);
 
-  static const small = TextStyle(
-    fontFamily: _family,
-    fontSize: 12,
-    height: 16 / 12,
-    fontWeight: FontWeight.w400,
-    color: AppColors.onSurfaceVariant,
-  );
+  static const small = TextStyle(fontFamily: _family, fontSize: 13, height: 18 / 13, fontWeight: FontWeight.w400);
 
-  static const smallStrong = TextStyle(
-    fontFamily: _family,
-    fontSize: 12,
-    height: 16 / 12,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.24,
-    color: AppColors.onSurface,
-  );
+  static const smallStrong = TextStyle(fontFamily: _family, fontSize: 13, height: 18 / 13, fontWeight: FontWeight.w600);
 
-  static const smallBold = TextStyle(
-    fontFamily: _family,
-    fontSize: 12,
-    height: 16 / 12,
-    fontWeight: FontWeight.w700,
-    letterSpacing: 0.24,
-    color: AppColors.onSurface,
-  );
+  static const caption = TextStyle(fontFamily: _family, fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w500);
 
-  static const label = TextStyle(
-    fontFamily: _family,
-    fontSize: 10,
-    height: 14 / 10,
-    fontWeight: FontWeight.w700,
-    letterSpacing: 0.5,
-    color: AppColors.onSurfaceVariant,
-  );
+  /// Small uppercase section labels.
+  static const label = TextStyle(fontFamily: _family, fontSize: 11, height: 14 / 11, fontWeight: FontWeight.w700, letterSpacing: 0.8);
 
-  static const labelSemi = TextStyle(
-    fontFamily: _family,
-    fontSize: 10,
-    height: 14 / 10,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.5,
-    color: AppColors.onSurfaceVariant,
-  );
-
-  static const labelRegular = TextStyle(
-    fontFamily: _family,
-    fontSize: 10,
-    height: 14 / 10,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.5,
-    color: AppColors.onSurfaceVariant,
-  );
-
-  static const mono = TextStyle(
-    fontFamily: 'Cousine',
-    fontSize: 10,
-    height: 14 / 10,
-    fontWeight: FontWeight.w700,
-    letterSpacing: 0.5,
-    color: AppColors.onSurfaceVariant,
-  );
+  static const mono = TextStyle(fontFamily: 'Cousine', fontSize: 11, height: 14 / 11, fontWeight: FontWeight.w700, letterSpacing: 0.3);
 }

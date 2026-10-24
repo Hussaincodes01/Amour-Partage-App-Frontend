@@ -7,24 +7,19 @@ import '../core/motion/routes.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_text.dart';
 import '../core/widgets/avatar.dart';
-import '../core/widgets/logo.dart';
 import '../core/widgets/pills.dart';
 import '../core/widgets/surfaces.dart';
 import '../core/widgets/symbol.dart';
 import '../data/couple_state.dart';
-import '../data/demo_images.dart';
 import '../features/chat/chat_screen.dart';
 import '../features/home/home_screen.dart';
-import '../features/lounge/lounge_screen.dart';
+import '../features/memories/memories_screen.dart';
 import '../features/profile/profile_screen.dart';
-import '../features/shield/ai_shield_screen.dart';
-import '../features/vault/vault_map_screen.dart';
+import '../features/together/together_screen.dart';
 
-const _headerContent = 64.0;
-const _navContent = 80.0;
+const _navHeight = 68.0;
 
-/// Space taken by the floating header and nav, so tab content can scroll
-/// underneath them (the header/nav are frosted glass over the content).
+/// Space the nav bar takes, so tab content can scroll underneath it.
 class ShellInsets extends InheritedWidget {
   const ShellInsets({super.key, required this.insets, required super.child});
 
@@ -43,26 +38,26 @@ class MainShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final c = context.colors;
     final pad = MediaQuery.paddingOf(context);
-    // While typing, the body shrinks above the keyboard and the nav steps aside,
-    // so focused fields (chat composer, Soul Spark answer) stay visible.
+    // While typing, the nav steps aside so the focused field stays visible.
     final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
-    final insets = EdgeInsets.only(top: pad.top + _headerContent, bottom: keyboardOpen ? 0 : pad.bottom + _navContent);
+    final insets = EdgeInsets.only(top: pad.top, bottom: keyboardOpen ? 0 : pad.bottom + _navHeight);
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: c.bg,
       resizeToAvoidBottomInset: true,
       body: BackdropGroup(
         child: ShellInsets(
           insets: insets,
           child: Stack(
             children: [
+              const Positioned.fill(child: AmbientGlow()),
               Positioned.fill(
                 child: _FadeThroughTabs(
                   index: state.tab,
-                  builders: const [HomeScreen.new, LoungeScreen.new, ChatScreen.new, VaultMapScreen.new, AiShieldScreen.new],
+                  builders: const [HomeScreen.new, TogetherScreen.new, ChatScreen.new, MemoriesScreen.new],
                 ),
               ),
-              const Positioned(top: 0, left: 0, right: 0, child: AppHeader()),
               if (!keyboardOpen)
                 Positioned(left: 0, right: 0, bottom: 0, child: _NavBar(index: state.tab, chatUnread: state.chatUnread, onSelect: state.selectTab)),
             ],
@@ -73,7 +68,7 @@ class MainShell extends StatelessWidget {
   }
 }
 
-/// Keeps every visited tab alive and cross-fades + pops between them.
+/// Keeps visited tabs alive; the incoming tab fades and settles in.
 class _FadeThroughTabs extends StatefulWidget {
   const _FadeThroughTabs({required this.index, required this.builders});
 
@@ -90,20 +85,14 @@ class _FadeThroughTabsState extends State<_FadeThroughTabs> with TickerProviderS
     (i) => AnimationController(vsync: this, duration: Motion.medium, value: i == widget.index ? 1 : 0),
   );
   late final List<Widget?> _pages = List.filled(widget.builders.length, null);
-
-  late final List<Animation<double>> _fades = [
-    for (final c in _controllers) CurvedAnimation(parent: c, curve: Curves.easeOutCubic),
-  ];
-  late final List<Animation<double>> _scales = [
-    for (final c in _controllers) Tween(begin: 0.975, end: 1.0).animate(CurvedAnimation(parent: c, curve: Motion.emphasized)),
-  ];
+  late final _fades = [for (final c in _controllers) CurvedAnimation(parent: c, curve: Curves.easeOutCubic)];
+  late final _scales = [for (final c in _controllers) Tween(begin: 0.98, end: 1.0).animate(CurvedAnimation(parent: c, curve: Motion.emphasized))];
 
   @override
   void didUpdateWidget(_FadeThroughTabs old) {
     super.didUpdateWidget(old);
     if (old.index != widget.index) {
-      // The outgoing tab is hidden at once; only the incoming tab fades, so a
-      // switch costs a single translucent layer instead of two.
+      // Only the incoming tab animates: one translucent layer per switch.
       _controllers[old.index].value = 0;
       if (Motion.reduced(context)) {
         _controllers[widget.index].value = 1;
@@ -131,7 +120,7 @@ class _FadeThroughTabsState extends State<_FadeThroughTabs> with TickerProviderS
           if (_pages[i] != null)
             Offstage(
               offstage: i != widget.index,
-              // Paused tabs stop their looping animations (saves battery/GPU).
+              // Hidden tabs pause their animations (battery, GPU).
               child: TickerMode(
                 enabled: i == widget.index,
                 child: FadeTransition(
@@ -145,97 +134,57 @@ class _FadeThroughTabsState extends State<_FadeThroughTabs> with TickerProviderS
   }
 }
 
-/// Top bar: brand + E2EE status + partner avatar.
-class AppHeader extends StatelessWidget {
-  const AppHeader({super.key});
+/// Large tab title with the profile avatar on the right.
+class TabHeader extends StatelessWidget {
+  const TabHeader({super.key, required this.title, this.subtitle, this.trailing});
+
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.paddingOf(context).top;
-    return DecoratedBox(
-      decoration: const BoxDecoration(boxShadow: [BoxShadow(color: Color(0x66000000), blurRadius: 24, offset: Offset(0, 4))]),
-      child: FrostedBox(
-        sigma: 16,
-        color: AppColors.ink(0.8),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(16, top + 12, 16, 14),
-          child: Row(
-            children: [
-              const AmourLogo(size: 32),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Amour Partagé', maxLines: 1, overflow: TextOverflow.fade, softWrap: false, style: AppText.title.copyWith(letterSpacing: -0.5, height: 1.2)),
-                    Text('Our Space', style: AppText.label.copyWith(color: AppColors.primary, height: 1.1)),
-                  ],
-                ),
-              ),
-              Pressable(
-                onTap: () => AppScope.read(context).selectTab(4),
-                child: Tag(
-                  label: 'E2EE',
-                  color: AppColors.mint,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  dot: const Dot(color: AppColors.mint, size: 8, glow: true),
-                  style: AppText.label.copyWith(letterSpacing: 0.25),
-                  glow: AppColors.mint.withValues(alpha: 0.15),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Pressable(
-                onTap: () => context.pushPop(const ProfileScreen()),
-                semanticLabel: 'Profile and settings',
-                child: SizedBox(
-                  width: 35,
-                  height: 35,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const Avatar(image: DemoImages.camille, size: 35, ring: AppGradients.avatarRing, ringWidth: 1.5),
-                      Positioned(
-                        right: -2,
-                        bottom: -2,
-                        child: Container(
-                          width: 14,
-                          height: 14,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: AppColors.hotPink,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.bg, width: 2),
-                          ),
-                          child: const Sym(Symbols.favorite, size: 7, color: Colors.white, fill: true),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+    final c = context.colors;
+    final state = AppScope.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 12, 0, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppText.largeTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (subtitle != null) ...[const SizedBox(height: 2), Text(subtitle!, style: AppText.small.copyWith(color: c.textMuted))],
+              ],
+            ),
           ),
-        ),
+          ?trailing,
+          const SizedBox(width: 8),
+          Pressable(
+            onTap: () => context.pushPop(const ProfileScreen()),
+            semanticLabel: 'Profile and settings',
+            child: Avatar(image: state.couple?.me.photo ?? state.account?.photo, name: state.myName, size: 40),
+          ),
+        ],
       ),
     );
   }
 }
 
 class _NavItem {
-  const _NavItem(this.icon, this.label, this.size);
+  const _NavItem(this.icon, this.label);
 
   final IconData icon;
   final String label;
-  final double size;
 }
 
-const _navItems = [
-  _NavItem(Symbols.favorite, 'Home', 24),
-  _NavItem(Symbols.headphones, 'Lounge', 24),
-  _NavItem(Symbols.auto_awesome, 'Chat', 24),
-  _NavItem(Symbols.shield, 'Vault & Map', 24),
-  _NavItem(Symbols.fingerprint, 'AI Shield', 24),
+const _items = [
+  _NavItem(Symbols.favorite, 'Home'),
+  _NavItem(Symbols.play_circle, 'Together'),
+  _NavItem(Symbols.chat_bubble, 'Chat'),
+  _NavItem(Symbols.photo_library, 'Memories'),
 ];
 
 class _NavBar extends StatelessWidget {
@@ -247,24 +196,20 @@ class _NavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final bottom = MediaQuery.paddingOf(context).bottom;
     return DecoratedBox(
-      decoration: BoxDecoration(boxShadow: [BoxShadow(color: AppColors.hotPink.withValues(alpha: 0.08), blurRadius: 32, offset: const Offset(0, -8))]),
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
       child: FrostedBox(
-        sigma: 16,
-        color: AppColors.ink(0.85),
+        opacity: 0.88,
         child: Padding(
-          padding: EdgeInsets.only(left: 4, right: 4, bottom: bottom),
+          padding: EdgeInsets.only(bottom: bottom),
           child: SizedBox(
-            height: _navContent,
+            height: _navHeight,
             child: Row(
               children: [
-                for (var i = 0; i < _navItems.length; i++)
-                  Expanded(
-                    child: Center(
-                      child: _NavButton(item: _navItems[i], selected: i == index, badge: i == 2 && chatUnread, onTap: () => onSelect(i)),
-                    ),
-                  ),
+                for (var i = 0; i < _items.length; i++)
+                  Expanded(child: _NavButton(item: _items[i], selected: i == index, badge: i == 2 && chatUnread, onTap: () => onSelect(i))),
               ],
             ),
           ),
@@ -284,51 +229,39 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.primary : AppColors.onSurfaceVariant;
+    final c = context.colors;
+    final color = selected ? c.accent : c.textMuted;
     return Pressable(
       onTap: onTap,
       haptic: PressFeedback.selection,
       pressedScale: 0.9,
       semanticLabel: item.label,
-      child: AnimatedContainer(
-        duration: Motion.medium,
-        curve: Motion.emphasized,
-        height: 56,
-        constraints: const BoxConstraints(minWidth: 56),
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.hotPink.withValues(alpha: 0.2) : AppColors.hotPink.withValues(alpha: 0),
-          borderRadius: BorderRadius.circular(999),
-          boxShadow: [BoxShadow(color: AppColors.hotPink.withValues(alpha: selected ? 0.25 : 0), blurRadius: 16)],
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.center,
-          children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedScale(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AnimatedContainer(
+                duration: Motion.medium,
+                curve: Motion.emphasized,
+                width: selected ? 56 : 40,
+                height: 30,
+                decoration: BoxDecoration(color: selected ? c.pink.withValues(alpha: c.isDark ? 0.2 : 0.12) : c.pink.withValues(alpha: 0), borderRadius: BorderRadius.circular(999)),
+                alignment: Alignment.center,
+                child: AnimatedScale(
                   duration: Motion.medium,
                   curve: Motion.pop,
-                  scale: selected ? 1.08 : 1,
-                  child: Sym(item.icon, size: item.size, color: color, fill: selected),
+                  scale: selected ? 1.06 : 1,
+                  child: Sym(item.icon, size: 22, color: color, fill: selected),
                 ),
-                const SizedBox(height: 2),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: AnimatedDefaultTextStyle(
-                    duration: Motion.fast,
-                    style: AppText.label.copyWith(color: color),
-                    child: Text(item.label, maxLines: 1, softWrap: false),
-                  ),
-                ),
-              ],
-            ),
-            if (badge)
-              const Positioned(top: 6, right: 4, child: Dot(color: AppColors.hotPink, size: 8, glow: true)),
-          ],
-        ),
+              ),
+              if (badge) Positioned(top: 2, right: selected ? 10 : 4, child: Dot(color: c.pink, size: 9, border: c.bg)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(item.label, maxLines: 1, style: AppText.caption.copyWith(color: color, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+        ],
       ),
     );
   }

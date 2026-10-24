@@ -1,0 +1,21 @@
+{
+  "name": "amour-partage-backend",
+  "private": true,
+  "description": "Firebase project for Amour Partagé: security rules, indexes and Cloud Functions.",
+  "type": "module",
+  "scripts": {
+    "build": "npm --prefix functions run build",
+    "test:unit": "npm --prefix functions run test:unit",
+    "test:rules": "firebase emulators:exec --only firestore,database,storage \"vitest run tests\"",
+    "test:functions": "firebase emulators:exec --only auth,firestore,database \"npm --prefix functions run test:emulator\"",
+    "test": "npm run test:unit && npm run test:rules && npm run test:functions",
+    "emulators": "npm run build && firebase emulators:start",
+    "deploy": "firebase deploy"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "firebase-tools": "^15.34.1",
+    "vitest": "^3.2.7"
+  }
+}

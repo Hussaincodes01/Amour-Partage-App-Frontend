@@ -1,0 +1,53 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "members": {
+      ".read": false,
+      ".write": false
+    },
+    "couples": {
+      "$cid": {
+        ".read": "auth != null && root.child('members').child($cid).child(auth.uid).val() === true",
+        "presence": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('members').child($cid).child(auth.uid).val() === true",
+            ".validate": "newData.hasChildren(['online', 'lastSeen'])",
+            "online": { ".validate": "newData.isBoolean()" },
+            "lastSeen": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+            "$other": { ".validate": false }
+          }
+        },
+        "typing": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('members').child($cid).child(auth.uid).val() === true",
+            ".validate": "newData.isBoolean()"
+          }
+        },
+        "playback": {
+          ".write": "auth != null && root.child('members').child($cid).child(auth.uid).val() === true",
+          ".validate": "newData.hasChildren(['mediaId', 'playing', 'positionMs', 'at', 'by', 'seq']) && (!data.exists() || newData.child('seq').val() > data.child('seq').val())",
+          "mediaId": { ".validate": "newData.isString() && newData.val().length <= 64" },
+          "playing": { ".validate": "newData.isBoolean()" },
+          "buffering": { ".validate": "newData.isBoolean()" },
+          "positionMs": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          "at": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+          "by": { ".validate": "newData.val() === auth.uid" },
+          "seq": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        },
+        "countdown": {
+          ".write": "auth != null && root.child('members').child($cid).child(auth.uid).val() === true",
+          ".validate": "newData.hasChildren(['service', 'startAt', 'by'])",
+          "service": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "startAt": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+          "by": { ".validate": "newData.val() === auth.uid" },
+          "$other": { ".validate": false }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

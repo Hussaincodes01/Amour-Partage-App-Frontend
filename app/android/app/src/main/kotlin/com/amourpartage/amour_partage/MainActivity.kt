@@ -1,5 +1,7 @@
 package com.amourpartage.amour_partage
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.os.Build
 import android.os.Bundle
 import android.view.Display
@@ -19,9 +21,28 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Screenshot shield is on by default; Dart can turn it off from AI Shield.
+        // Screenshot shield is on by default; Dart can turn it off in Privacy.
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         requestHighestRefreshRate()
+        createNotificationChannels()
+    }
+
+    /** Channels named in the push payloads sent by the Cloud Functions. */
+    private fun createNotificationChannels() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = getSystemService(NotificationManager::class.java) ?: return
+        manager.createNotificationChannel(
+            NotificationChannel("amour_messages", "Messages and nudges", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "New messages, daily questions and love from your partner"
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
+            },
+        )
+        manager.createNotificationChannel(
+            NotificationChannel("amour_calls", "Calls", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Incoming voice and video calls"
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
+            },
+        )
     }
 
     override fun onResume() {

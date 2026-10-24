@@ -43,14 +43,29 @@ jobs:
       - name: Test
         run: flutter test
 
+      # With the AMOUR_FIREBASE_CONFIG secret (contents of
+      # app/config/firebase.json) the APK talks to your Firebase project;
+      # without it the APK runs the built-in demo.
+      - name: Firebase settings
+        env:
+          FIREBASE_CONFIG_JSON: ${{ secrets.AMOUR_FIREBASE_CONFIG }}
+        run: |
+          if [ -n "$FIREBASE_CONFIG_JSON" ]; then
+            printf '%s' "$FIREBASE_CONFIG_JSON" > config/firebase.json
+            echo "DART_DEFINES=--dart-define-from-file=config/firebase.json" >> "$GITHUB_ENV"
+            echo "Building against Firebase"
+          else
+            echo "No AMOUR_FIREBASE_CONFIG secret: building the demo"
+          fi
+
       - name: Build release APKs (universal + per CPU architecture)
         run: |
           version=$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)
           out=build/app/outputs/flutter-apk
           mkdir -p ../dist
-          flutter build apk --release
+          flutter build apk --release $DART_DEFINES
           cp "$out/app-release.apk" "../dist/amour-partage-$version.apk"
-          flutter build apk --release --split-per-abi
+          flutter build apk --release --split-per-abi $DART_DEFINES
           for abi in arm64-v8a armeabi-v7a x86_64; do
             cp "$out/app-$abi-release.apk" "../dist/amour-partage-$version-$abi.apk"
           done
@@ -62,8 +77,9 @@ jobs:
           path: dist/*.apk
           if-no-files-found: error
 
-      # Manual runs (Actions → Android app → Run workflow) also commit the
-      # universal and arm64 APKs to releases/ so they can be downloaded from the repo.
+      # Manual runs (Actions → Android app → Run workflow) also commit APKs to
+      # releases/: the per-CPU builds for phones, plus the universal one when it
+      # fits under GitHub's file size limit.
       - name: Publish APKs to releases/
         if: github.event_name == 'workflow_dispatch' && inputs.publish
         working-directory: .
@@ -77,7 +93,10 @@ jobs:
           git config user.email "$ACTOR_ID+$ACTOR@users.noreply.github.com"
           git rm -q --ignore-unmatch 'releases/*.apk'
           mkdir -p releases
-          cp "dist/amour-partage-$version.apk" "dist/amour-partage-$version-arm64-v8a.apk" releases/
+          cp "dist/amour-partage-$version-arm64-v8a.apk" "dist/amour-partage-$version-armeabi-v7a.apk" releases/
+          universal="dist/amour-partage-$version.apk"
+          if [ "$(stat -c %s "$universal")" -lt 95000000 ]; then cp "$universal" releases/; fi
+          ls -l releases
           git add releases
           if git diff --cached --quiet; then echo "APKs unchanged"; exit 0; fi
           git commit -q -m "Build Android APKs $version (${GITHUB_SHA::7})"
