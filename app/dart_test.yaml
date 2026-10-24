@@ -1,0 +1,4 @@
+tags:
+  screenshots:
+    # Visual reference renders. Run: flutter test --tags screenshots --update-goldens
+    skip: "Renders reference screenshots; run explicitly with --tags screenshots"

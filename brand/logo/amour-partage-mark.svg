@@ -1,25 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 60 380 380" width="380" height="380">
-  <title>Amour Partage mark</title>
-  <defs>
-    <linearGradient id="mk-a" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#F27BEA"/><stop offset="1" stop-color="#FF3E9A"/>
-    </linearGradient>
-    <linearGradient id="mk-b" x1="1" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FF6A4D"/><stop offset="1" stop-color="#E8322E"/>
-    </linearGradient>
-    <radialGradient id="mk-core" cx="0.5" cy="0.45" r="0.6">
-      <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#FFE3EE"/>
-    </radialGradient>
-    <clipPath id="mk-clip"><path transform="translate(214 276) rotate(-12) scale(2)" d="M0 40C-6 34-52 4-52-22C-52-40-39-52-24-52C-12-52-4-45 0-36C4-45 12-52 24-52C39-52 52-40 52-22C52 4 6 34 0 40Z"/></clipPath>
-    <filter id="mk-soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="22"/></filter>
-  </defs>
-  <g filter="url(#mk-soft)" opacity="0.7">
-    <path transform="translate(214 276) rotate(-12) scale(2)" d="M0 40C-6 34-52 4-52-22C-52-40-39-52-24-52C-12-52-4-45 0-36C4-45 12-52 24-52C39-52 52-40 52-22C52 4 6 34 0 40Z" fill="#FF3E9A"/>
-    <path transform="translate(298 276) rotate(12) scale(2)" d="M0 40C-6 34-52 4-52-22C-52-40-39-52-24-52C-12-52-4-45 0-36C4-45 12-52 24-52C39-52 52-40 52-22C52 4 6 34 0 40Z" fill="#E8322E"/>
-  </g>
-  <path transform="translate(214 276) rotate(-12) scale(2)" d="M0 40C-6 34-52 4-52-22C-52-40-39-52-24-52C-12-52-4-45 0-36C4-45 12-52 24-52C39-52 52-40 52-22C52 4 6 34 0 40Z" fill="url(#mk-a)"/>
-  <path transform="translate(298 276) rotate(12) scale(2)" d="M0 40C-6 34-52 4-52-22C-52-40-39-52-24-52C-12-52-4-45 0-36C4-45 12-52 24-52C39-52 52-40 52-22C52 4 6 34 0 40Z" fill="url(#mk-b)"/>
-  <g clip-path="url(#mk-clip)"><path transform="translate(298 276) rotate(12) scale(2)" d="M0 40C-6 34-52 4-52-22C-52-40-39-52-24-52C-12-52-4-45 0-36C4-45 12-52 24-52C39-52 52-40 52-22C52 4 6 34 0 40Z" fill="url(#mk-core)"/></g>
-  <path transform="translate(388 126)" d="M0 -28C3.08 -8.12 8.12 -3.08 28 0C8.12 3.08 3.08 8.12 0 28C-3.08 8.12 -8.12 3.08 -28 0C-8.12 -3.08 -3.08 -8.12 0 -28Z" fill="#FFFFFF"/>
-  <path transform="translate(420 174)" d="M0 -11C1.21 -3.19 3.19 -1.21 11 0C3.19 1.21 1.21 3.19 0 11C-1.21 3.19 -3.19 1.21 -11 0C-3.19 -1.21 -1.21 -3.19 0 -11Z" fill="#FFFFFF" opacity="0.8"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><defs>
+  <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1C1030"/><stop offset="1" stop-color="#120A1E"/></linearGradient>
+  <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF3FB4" stop-opacity=".35"/><stop offset="1" stop-color="#8F5BFF" stop-opacity=".12"/></linearGradient>
+  <linearGradient id="neon" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF3FB4"/><stop offset="1" stop-color="#8F5BFF"/></linearGradient>
+  <linearGradient id="core" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E0409E"/><stop offset="1" stop-color="#8F5BFF"/></linearGradient>
+  <filter id="blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="30.72"/></filter>
+  <filter id="soft" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="12.8"/></filter>
+</defs><path d="M256.00,370.69 C211.56,342.02 109.98,284.67 109.98,207.26 C109.98,161.38 151.24,129.84 192.51,129.84 C224.26,129.84 246.48,147.05 256.00,169.98 C265.52,147.05 287.74,129.84 319.49,129.84 C360.76,129.84 402.02,161.38 402.02,207.26 C402.02,284.67 300.44,342.02 256.00,370.69 Z" fill="none" stroke="url(#neon)" stroke-width="51.2" opacity=".55" filter="url(#blur)"/><path d="M256.00,370.69 C211.56,342.02 109.98,284.67 109.98,207.26 C109.98,161.38 151.24,129.84 192.51,129.84 C224.26,129.84 246.48,147.05 256.00,169.98 C265.52,147.05 287.74,129.84 319.49,129.84 C360.76,129.84 402.02,161.38 402.02,207.26 C402.02,284.67 300.44,342.02 256.00,370.69 Z" fill="none" stroke="url(#neon)" stroke-width="35.84" stroke-linejoin="round"/><path d="M256.00,301.06 C238.80,289.79 199.48,267.26 199.48,236.85 C199.48,218.83 215.45,206.44 231.42,206.44 C243.71,206.44 252.31,213.20 256.00,222.21 C259.69,213.20 268.29,206.44 280.58,206.44 C296.55,206.44 312.52,218.83 312.52,236.85 C312.52,267.26 273.20,289.79 256.00,301.06 Z" fill="url(#core)"/><circle cx="258.56" cy="256.0" r="20.48" fill="#F4D9FF" opacity=".9" filter="url(#soft)"/></svg>

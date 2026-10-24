@@ -1,10 +1,9 @@
-# Amour Partage — Android app
+# Amour Partagé
 
-A private space for couples: E2E-encrypted chat, video calls, Watch/Listen Together, shared playlists, location sharing, animated daily questions, and an on-device AI privacy layer.
+A private space for couples: E2E-encrypted chat, video calls, Watch/Listen Together, shared playlists, live location sharing, animated daily questions, and an on-device AI privacy shield.
 
-![Logo concept](brand/logo/preview.png)
+![Logo](brand/logo/preview.png)
 
+- **Android app (Flutter):** [`app/`](app/), including screen previews, how to run it, and beta vs. coming-soon features
 - **Beta plan:** [PLAN.md](PLAN.md)
-- **Brand assets (concept):** [brand/logo/](brand/logo/)
-
-Status: planning. The Flutter scaffold lands once the open decisions in the plan are settled.
+- **Brand assets:** [brand/logo/](brand/logo/)

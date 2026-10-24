@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M54.00,69.00 C48.19,65.25 34.90,57.75 34.90,47.63 C34.90,41.63 40.30,37.50 45.70,37.50 C49.85,37.50 52.75,39.75 54.00,42.75 C55.25,39.75 58.15,37.50 62.30,37.50 C67.70,37.50 73.10,41.63 73.10,47.63 C73.10,57.75 59.81,65.25 54.00,69.00 Z" android:strokeWidth="8.04" android:strokeAlpha="0.28" android:strokeLineJoin="round">
+        <aapt:attr name="android:strokeColor"><gradient android:type="linear" android:startX="33.2" android:startY="35.3" android:endX="74.8" android:endY="72.7" android:startColor="#FFFF3FB4" android:endColor="#FF8F5BFF"/></aapt:attr>
+    </path>
+    <path android:pathData="M54.00,69.00 C48.19,65.25 34.90,57.75 34.90,47.63 C34.90,41.63 40.30,37.50 45.70,37.50 C49.85,37.50 52.75,39.75 54.00,42.75 C55.25,39.75 58.15,37.50 62.30,37.50 C67.70,37.50 73.10,41.63 73.10,47.63 C73.10,57.75 59.81,65.25 54.00,69.00 Z" android:strokeWidth="4.69" android:strokeLineJoin="round">
+        <aapt:attr name="android:strokeColor"><gradient android:type="linear" android:startX="33.2" android:startY="35.3" android:endX="74.8" android:endY="72.7" android:startColor="#FFFF3FB4" android:endColor="#FF8F5BFF"/></aapt:attr>
+    </path>
+    <path android:pathData="M54.00,59.89 C51.75,58.42 46.61,55.47 46.61,51.50 C46.61,49.14 48.70,47.52 50.79,47.52 C52.39,47.52 53.52,48.40 54.00,49.58 C54.48,48.40 55.61,47.52 57.21,47.52 C59.30,47.52 61.39,49.14 61.39,51.50 C61.39,55.47 56.25,58.42 54.00,59.89 Z">
+        <aapt:attr name="android:fillColor"><gradient android:type="linear" android:startX="46.0" android:startY="46.6" android:endX="62.0" android:endY="61.4" android:startColor="#FFE0409E" android:endColor="#FF8F5BFF"/></aapt:attr>
+    </path>
+</vector>

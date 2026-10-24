@@ -6,7 +6,7 @@
 |---|---|
 | **Platform** | Android first (iOS later from the same codebase) |
 | **Release target** | Closed beta on Google Play |
-| **Design reference** | [“AI Dating App” by Ronald Olsen (Dribbble)](https://dribbble.com/shots/26603794-AI-Dating-App): the visual language only; Amour Partage is a couples app, not a dating app |
+| **Design reference** | The project's Figma theme (dark plum, pink/violet glow, Plus Jakarta Sans, Material Symbols). It is implemented in [`app/`](app/). Section 3 below records the earlier Dribbble-based exploration |
 | **Status** | Plan, ready for review. Decisions needed are listed in [§13](#13-open-decisions) |
 
 ---
@@ -57,7 +57,11 @@
 
 ---
 
-## 3. Design direction (from the reference shot)
+## 3. Design direction
+
+> **Update:** the Figma theme supersedes this exploration. The app in `app/` implements the Figma screens (Home, Lounge, onboarding "AI Privacy Sanctuary", Chat, Video call + Watch Together, Vault & Map) plus the extra beta screens. The logo is the Figma neon-heart mark (see `brand/logo/`).
+
+### Earlier exploration (from the Dribbble reference shot)
 
 The reference shows two moods of the same onboarding screen. We turn them into our two themes:
 
@@ -110,15 +114,9 @@ The reference shows two moods of the same onboarding screen. We turn them into o
 
 ## 4. Logo
 
-A first concept is in [`brand/logo/`](brand/logo/) (SVG, with text converted to outlines):
+The logo follows the Figma theme: a neon double heart (magenta → violet) on a dark rounded tile. It is drawn as vector art (`app/lib/core/widgets/logo.dart` and `brand/logo/*.svg`). The Android adaptive icon (with a monochrome layer for themed icons), the Android 12+ splash icon and a Play Store 512 px icon are generated from the same geometry.
 
-- **Mark:** two hearts that overlap. **The space they share glows white**, a third heart that is literally *amour partagé* (shared love). The sparkle stands for the AI privacy layer.
-- **Icon:** the mark on a Midnight aurora tile with grain. It also works on Golden Hour, as the preview shows.
-- **Wordmark:** script "*Amour*" in the accent gradient plus serif "Partage", the same script-plus-serif pairing as the reference headline.
-
-![Logo concept preview](brand/logo/preview.png)
-
-**Next steps:** pick or iterate on the direction, then produce the Android adaptive icon (foreground mark inside the 66 dp safe zone, aurora background layer, monochrome layer for themed icons), the Play Store 512 px icon and a feature graphic.
+![Logo preview](brand/logo/preview.png)
 
 ---
 
