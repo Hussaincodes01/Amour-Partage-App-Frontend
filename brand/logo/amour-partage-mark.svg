@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 60 380 380" width="380" height="380">
+  <title>Amour Partage mark</title>
+  <defs>
+    <linearGradient id="mk-a" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F27BEA"/><stop offset="1" stop-color="#FF3E9A"/>
+    </linearGradient>
+    <linearGradient id="mk-b" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF6A4D"/><stop offset="1" stop-color="#E8322E"/>
+    </linearGradient>
+    <radialGradient id="mk-core" cx="0.5" cy="0.45" r="0.6">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#FFE3EE"/>
+    </radialGradient>
+    <clipPath id="mk-clip"><path transform="translate(214 276) rotate(-12) scale(2)" d="M0 40C-6 34-52 4-52-22C-52-40-39-52-24-52C-12-52-4-45 0-36C4-45 12-52 24-52C39-52 52-40 52-22C52 4 6 34 0 40Z"/></clipPath>
+    <filter id="mk-soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="22"/></filter>
+  </defs>
+  <g filter="url(#mk-soft)" opacity="0.7">
+    <path transform="translate(214 276) rotate(-12) scale(2)" d="M0 40C-6 34-52 4-52-22C-52-40-39-52-24-52C-12-52-4-45 0-36C4-45 12-52 24-52C39-52 52-40 52-22C52 4 6 34 0 40Z" fill="#FF3E9A"/>
+    <path transform="translate(298 276) rotate(12) scale(2)" d="M0 40C-6 34-52 4-52-22C-52-40-39-52-24-52C-12-52-4-45 0-36C4-45 12-52 24-52C39-52 52-40 52-22C52 4 6 34 0 40Z" fill="#E8322E"/>
+  </g>
+  <path transform="translate(214 276) rotate(-12) scale(2)" d="M0 40C-6 34-52 4-52-22C-52-40-39-52-24-52C-12-52-4-45 0-36C4-45 12-52 24-52C39-52 52-40 52-22C52 4 6 34 0 40Z" fill="url(#mk-a)"/>
+  <path transform="translate(298 276) rotate(12) scale(2)" d="M0 40C-6 34-52 4-52-22C-52-40-39-52-24-52C-12-52-4-45 0-36C4-45 12-52 24-52C39-52 52-40 52-22C52 4 6 34 0 40Z" fill="url(#mk-b)"/>
+  <g clip-path="url(#mk-clip)"><path transform="translate(298 276) rotate(12) scale(2)" d="M0 40C-6 34-52 4-52-22C-52-40-39-52-24-52C-12-52-4-45 0-36C4-45 12-52 24-52C39-52 52-40 52-22C52 4 6 34 0 40Z" fill="url(#mk-core)"/></g>
+  <path transform="translate(388 126)" d="M0 -28C3.08 -8.12 8.12 -3.08 28 0C8.12 3.08 3.08 8.12 0 28C-3.08 8.12 -8.12 3.08 -28 0C-8.12 -3.08 -3.08 -8.12 0 -28Z" fill="#FFFFFF"/>
+  <path transform="translate(420 174)" d="M0 -11C1.21 -3.19 3.19 -1.21 11 0C3.19 1.21 1.21 3.19 0 11C-1.21 3.19 -3.19 1.21 -11 0C-3.19 -1.21 -1.21 -3.19 0 -11Z" fill="#FFFFFF" opacity="0.8"/>
+</svg>
