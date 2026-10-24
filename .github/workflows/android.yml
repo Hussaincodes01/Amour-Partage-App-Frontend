@@ -6,10 +6,17 @@ on:
   pull_request:
     paths: ['app/**', '.github/workflows/android.yml']
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Commit the built APKs to releases/ on this branch
+        type: boolean
+        default: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: app
@@ -36,11 +43,43 @@ jobs:
       - name: Test
         run: flutter test
 
-      - name: Build release APKs (per CPU architecture)
-        run: flutter build apk --release --split-per-abi
+      - name: Build release APKs (universal + per CPU architecture)
+        run: |
+          version=$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)
+          out=build/app/outputs/flutter-apk
+          mkdir -p ../dist
+          flutter build apk --release
+          cp "$out/app-release.apk" "../dist/amour-partage-$version.apk"
+          flutter build apk --release --split-per-abi
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            cp "$out/app-$abi-release.apk" "../dist/amour-partage-$version-$abi.apk"
+          done
+          ls -l ../dist
 
       - uses: actions/upload-artifact@v4
         with:
           name: amour-partage-apks
-          path: app/build/app/outputs/flutter-apk/*.apk
+          path: dist/*.apk
           if-no-files-found: error
+
+      # Manual runs (Actions → Android app → Run workflow) also commit the
+      # universal and arm64 APKs to releases/ so they can be downloaded from the repo.
+      - name: Publish APKs to releases/
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        working-directory: .
+        env:
+          ACTOR: ${{ github.actor }}
+          ACTOR_ID: ${{ github.actor_id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          version=$(sed -n 's/^version: *\([^+]*\).*/\1/p' app/pubspec.yaml)
+          git config user.name "$ACTOR"
+          git config user.email "$ACTOR_ID+$ACTOR@users.noreply.github.com"
+          git rm -q --ignore-unmatch 'releases/*.apk'
+          mkdir -p releases
+          cp "dist/amour-partage-$version.apk" "dist/amour-partage-$version-arm64-v8a.apk" releases/
+          git add releases
+          if git diff --cached --quiet; then echo "APKs unchanged"; exit 0; fi
+          git commit -q -m "Build Android APKs $version (${GITHUB_SHA::7})"
+          git pull -q --rebase origin "$BRANCH"
+          git push origin "HEAD:$BRANCH"

@@ -5,5 +5,6 @@ A private space for couples: E2E-encrypted chat, video calls, Watch/Listen Toget
 ![Logo](brand/logo/preview.png)
 
 - **Android app (Flutter):** [`app/`](app/), including screen previews, how to run it, and beta vs. coming-soon features
+- **Download the APK:** [`releases/`](releases/)
 - **Beta plan:** [PLAN.md](PLAN.md)
 - **Brand assets:** [brand/logo/](brand/logo/)

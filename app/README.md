@@ -21,6 +21,7 @@ flutter build apk --release --split-per-abi  # release APKs in build/app/outputs
 
 Requirements: Flutter 3.47 (stable), JDK 17 and the Android SDK (API 36).
 CI (`.github/workflows/android.yml`) runs analyze and tests, then builds the APKs on every push that touches `app/`.
+A manual run (**Actions → Android app → Run workflow**) also commits the APKs to [`releases/`](../releases/).
 
 ## Speed and smoothness (60 → 165 Hz)
 
